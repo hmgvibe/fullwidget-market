@@ -1,0 +1,29 @@
+{
+  "id": "gaoci9008.water-reminder",
+  "name": { "zh-TW": "喝水提醒", "zh-CN": "喝水提醒", "en": "Water Reminder" },
+  "description": {
+    "zh-TW": "定時提醒喝水，支援按杯數或毫升記錄，到點彈通知，附隨機補水小貼士",
+    "zh-CN": "定时提醒喝水，支持按杯数或毫升记录，到点弹通知，附随机补水小贴士",
+    "en": "Reminds you to drink water on a schedule. Track by cups or milliliters, with notifications and random hydration tips."
+  },
+  "version": "1.0.0",
+  "author": "GaoCi9008",
+  "entry": "index.html",
+  "icon": "icon.svg",
+  "category": "productivity",
+  "size": { "width": 240, "height": 170, "minWidth": 180, "minHeight": 130, "grow": 1 },
+  "permissions": ["notify"],
+  "settings": [
+    { "key": "mode", "type": "select", "label": { "zh-TW": "計量方式", "zh-CN": "计量方式", "en": "Tracking" }, "default": "cup",
+      "options": [
+        { "value": "cup", "label": { "zh-TW": "按杯數", "zh-CN": "按杯数", "en": "Cups" } },
+        { "value": "ml", "label": { "zh-TW": "按毫升", "zh-CN": "按毫升", "en": "Milliliters" } }
+      ] },
+    { "key": "goal", "type": "number", "label": { "zh-TW": "今日目標（杯）", "zh-CN": "今日目标（杯）", "en": "Daily goal (cups)" }, "min": 1, "max": 20, "default": 8 },
+    { "key": "cupSize", "type": "number", "label": { "zh-TW": "每杯毫升數", "zh-CN": "每杯毫升数", "en": "Milliliters per cup" }, "min": 50, "max": 1000, "step": 50, "default": 250 },
+    { "key": "goalMl", "type": "number", "label": { "zh-TW": "今日目標（毫升）", "zh-CN": "今日目标（毫升）", "en": "Daily goal (ml)" }, "min": 200, "max": 6000, "step": 100, "default": 2000 },
+    { "key": "interval", "type": "slider", "label": { "zh-TW": "提醒間隔（分鐘）", "zh-CN": "提醒间隔（分钟）", "en": "Remind every (minutes)" }, "min": 15, "max": 120, "step": 5, "default": 45 },
+    { "key": "quietStart", "type": "text", "label": { "zh-TW": "免打擾開始", "zh-CN": "免打扰开始", "en": "Quiet from" }, "placeholder": "23:00", "default": "23:00" },
+    { "key": "quietEnd", "type": "text", "label": { "zh-TW": "免打擾結束", "zh-CN": "免打扰结束", "en": "Quiet until" }, "placeholder": "07:00", "default": "07:00" }
+  ]
+}
