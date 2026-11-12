@@ -1,0 +1,59 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>逐时天气</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="hw" id="hw" hidden>
+    <header class="head">
+      <div class="where">
+        <span class="head-ic" id="head-ic"></span>
+        <span class="city" id="city"></span>
+        <span class="sep">·</span>
+        <span class="cond" id="cond"></span>
+      </div>
+      <div class="hl w-num">
+        <span id="hi"></span>
+        <span id="lo"></span>
+      </div>
+      <div class="rt">
+        <span class="ago w-num" id="ago"></span>
+        <button class="rf" id="rf" data-no-drag data-no-menu type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M19.6 8.4A8 8 0 1 0 20 12"/>
+            <path d="M20.4 4.4v4h-4"/>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <div class="now">
+      <div class="temp w-display" id="temp"></div>
+      <div class="facts">
+        <div id="feels"></div>
+        <div id="rainmax"></div>
+      </div>
+    </div>
+
+    <div class="chart" id="chart"><svg id="curve"></svg></div>
+
+    <div class="readout" id="readout">
+      <span class="r-time w-num" id="r-time"></span>
+      <span class="r-cond" id="r-cond"></span>
+      <span class="r-temp w-num" id="r-temp"></span>
+      <span class="r-rain w-num" id="r-rain"></span>
+      <span class="stale w-label" id="stale"></span>
+    </div>
+  </main>
+
+  <div class="msg" id="msg">
+    <span id="msg-text"></span>
+    <button class="w-btn" id="retry" data-no-drag hidden></button>
+  </div>
+
+  <script src="/__fw/places.js"></script>
+  <script src="main.js"></script>
+</body>
+</html>

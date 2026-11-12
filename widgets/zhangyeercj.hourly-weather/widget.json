@@ -1,0 +1,33 @@
+{
+  "id": "zhangyeercj.hourly-weather",
+  "name": { "zh-TW": "逐時天氣", "zh-CN": "逐时天气", "en": "Hourly Weather" },
+  "description": {
+    "zh-TW": "每小時氣溫曲線與降雨機率",
+    "zh-CN": "每小时气温曲线与降水概率",
+    "en": "An hourly temperature curve with rain chance"
+  },
+  "version": "1.1.0",
+  "author": "zhangyeercj",
+  "preview": "preview/{theme}.{lang}.webp",
+  "entry": "index.html",
+  "icon": "icon.svg",
+  "category": "weather",
+  "size": { "width": 380, "height": 250, "minWidth": 240, "minHeight": 130, "maxWidth": 820, "maxHeight": 560, "grow": 1 },
+  "layer": "desktop",
+  "permissions": [
+    "network:api.open-meteo.com",
+    "network:geocoding-api.open-meteo.com",
+    "network:get.geojs.io"
+  ],
+  "settings": [
+    { "key": "city", "type": "text", "label": { "zh-TW": "城市", "zh-CN": "城市", "en": "City" }, "default": "",
+      "placeholder": { "zh-TW": "留空：按網絡位置自動定位", "zh-CN": "留空：按网络位置自动定位", "en": "Empty: locate from your network" } },
+    { "key": "unit", "type": "select", "label": { "zh-TW": "溫度單位", "zh-CN": "温度单位", "en": "Unit" }, "default": "celsius",
+      "options": [ { "value": "celsius", "label": "°C" }, { "value": "fahrenheit", "label": "°F" } ] },
+    { "key": "hours", "type": "select", "label": { "zh-TW": "曲線長度", "zh-CN": "曲线长度", "en": "Hours shown" }, "default": "24",
+      "options": [ { "value": "12", "label": { "zh-TW": "12 小時", "zh-CN": "12 小时", "en": "12 h" } },
+                   { "value": "24", "label": { "zh-TW": "24 小時", "zh-CN": "24 小时", "en": "24 h" } } ] },
+    { "key": "rain", "type": "toggle", "label": { "zh-TW": "顯示降雨機率", "zh-CN": "显示降水概率", "en": "Show rain chance" }, "default": true,
+      "description": { "zh-TW": "曲線下方的一排小柱子", "zh-CN": "曲线下方的一排小柱子", "en": "Small bars under the curve" } }
+  ]
+}
