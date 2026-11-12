@@ -9,5 +9,15 @@
   },
   "hmgvibe.eyebreak": {
     "script": "s = { mode: 'work', until: Date.now() + (12 * 60 + 34) * 1000, left: 0 }; render();"
+  },
+  "zhangyeercj.hourly-weather": {
+    "network": true,
+    "settings": {
+      "city": {
+        "zh-TW": "台北",
+        "zh-CN": "上海",
+        "en": "London"
+      }
+    }
   }
 }

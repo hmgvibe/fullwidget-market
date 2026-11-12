@@ -1,0 +1,188 @@
+body { container-type: size; }
+[hidden] { display: none !important; }
+
+.hw { height: 100%; display: flex; flex-direction: column; }
+
+/* ── 顶部：城市、天气、今天的高低温 ── */
+.head {
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-start;
+  gap: 0.5rem;
+  font-size: 0.857rem;
+  color: var(--w-fg-muted);
+  line-height: 1.3;
+}
+.where { display: flex; align-items: center; gap: 0.28rem; min-width: 0; flex: 1; }
+.city {
+  color: var(--w-fg);
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sep { opacity: 0.45; }
+.cond { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hl { flex: none; white-space: nowrap; }
+/* ── 右上角：多久前更新 + 手动刷新 ── */
+.rt {
+  margin-left: auto;
+  flex: none;
+  align-self: center;
+  display: flex;
+  align-items: center;
+  gap: 0.34rem;
+}
+.ago {
+  font-size: 0.72rem;
+  color: var(--w-fg-muted);
+  opacity: 0.85;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.rf {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.4rem;
+  height: 1.4rem;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--w-fg-muted);
+  cursor: pointer;
+}
+.rf svg {
+  display: block;
+  width: 1.05rem;
+  height: 1.05rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.rf:hover { color: var(--w-accent); }
+.rf:active { transform: scale(0.94); }
+.rf.busy svg { animation: rf-spin 0.85s linear infinite; }
+@keyframes rf-spin { to { transform: rotate(360deg); } }
+
+
+.ic {
+  width: 1.15em;
+  height: 1.15em;
+  vertical-align: -0.2em;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.head-ic { display: inline-flex; flex: none; }
+
+/* ── 现在：一个大数字，右边两条说明 ── */
+.now {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-top: 0.1rem;
+}
+.temp { font-size: min(22cqh, 15cqw); line-height: 0.98; margin-top: 0.08em; }
+.facts {
+  text-align: right;
+  font-size: 0.8rem;
+  color: var(--w-fg-muted);
+  line-height: 1.6;
+  white-space: nowrap;
+}
+
+/* ── 曲线：上面是气温，下面的小柱子是降雨机率 ── */
+.chart { flex: 1; min-height: 0; position: relative; margin-top: 0.2rem; }
+.chart svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+
+.chart .grid-line { stroke: var(--w-rule); stroke-width: 1; opacity: 0.7; }
+.chart .midnight { stroke: var(--w-fg-muted); stroke-width: 1; stroke-dasharray: 3 4; opacity: 0.22; }
+.chart .line { fill: none; stroke: var(--w-accent); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.chart .rain-bar { fill: var(--w-accent); opacity: 0.32; }
+.chart .rain-bar.on { opacity: 0.72; }
+.chart .pt { fill: var(--w-bg-solid, #101216); stroke: var(--w-accent); stroke-width: 1.6; }
+.chart .pt.on { fill: var(--w-accent); }
+.chart .sel-line { stroke: var(--w-accent); stroke-width: 1; opacity: 0.28; }
+.chart .temp-label {
+  fill: var(--w-fg);
+  opacity: 0.72;
+  font-family: var(--w-font-num);
+  font-weight: var(--w-num-weight);
+  font-size: 10.5px;
+  text-anchor: middle;
+  font-variant-numeric: tabular-nums;
+}
+.chart .hour-label {
+  fill: var(--w-fg-muted);
+  font-family: var(--w-font-num);
+  font-size: 10px;
+  text-anchor: middle;
+  font-variant-numeric: tabular-nums;
+}
+.chart .hour-label.now { fill: var(--w-fg); font-weight: 600; }
+
+/* ── 曲线下面那一行：鼠标指着哪一小时 ── */
+.readout {
+  display: flex;
+  align-items: baseline;
+  gap: 0.45rem;
+  font-size: 0.8rem;
+  color: var(--w-fg-muted);
+  min-height: 1.2em;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.r-time { color: var(--w-fg); }
+.r-temp { color: var(--w-fg); }
+.r-cond { display: inline-flex; align-items: center; gap: 0.2rem; min-width: 0; overflow: hidden; }
+.r-cond span { overflow: hidden; text-overflow: ellipsis; }
+.stale { margin-left: auto; font-size: 0.7rem; }
+
+.msg {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  color: var(--w-fg-muted);
+  text-align: center;
+  font-size: 0.93rem;
+}
+
+/* ── 卡片小的时候，先收起次要的东西 ── */
+@container (max-height: 168px) { .readout { display: none; } }
+@container (max-height: 150px) { .facts { display: none; } .temp { font-size: min(30cqh, 18cqw); } }
+@container (max-height: 120px) {
+  .hl, .sep, .cond { display: none; }
+  .temp { font-size: min(38cqh, 22cqw); }
+}
+
+/* ── 玻璃上的字：没有卡片，城市名站出来，曲线粗一点 ── */
+html[data-theme="type"] .head { font-size: 0.93rem; }
+html[data-theme="type"] .city { font-size: 1.15rem; letter-spacing: -0.01em; }
+html[data-theme="type"] .hl { display: none; }
+html[data-theme="type"] .temp { font-size: min(32cqh, 22cqw); }
+html[data-theme="type"] .chart .line { stroke-width: 2.6; }
+html[data-theme="type"] .chart .temp-label { opacity: 0.9; }
+html[data-theme="type"] .chart .hour-label { opacity: 0.9; }
+
+/* ── 书桌上的纸：墨线、虚线网格、像印出来的一张纸 ── */
+html[data-theme="paper"] .head { color: var(--w-fg); font-family: var(--w-font-title); }
+html[data-theme="paper"] .city { font-size: 1.2rem; }
+html[data-theme="paper"] .hl { color: var(--w-fg-muted); }
+html[data-theme="paper"] .temp { font-size: min(20cqh, 14cqw); }
+html[data-theme="paper"] .chart .line { stroke: var(--w-fg); stroke-width: 1.6; }
+html[data-theme="paper"] .chart .pt { fill: var(--w-bg-solid, #f3eee3); stroke: var(--w-fg); stroke-width: 1.4; }
+html[data-theme="paper"] .chart .pt.on { fill: var(--w-accent); stroke: var(--w-accent); }
+html[data-theme="paper"] .chart .rain-bar { fill: var(--w-fg); opacity: 0.22; }
+html[data-theme="paper"] .chart .rain-bar.on { fill: var(--w-accent); opacity: 0.6; }
+html[data-theme="paper"] .chart .grid-line { stroke-dasharray: 2 3; opacity: 0.55; }
+html[data-theme="paper"] .readout { border-top: 1px dashed var(--w-rule); padding-top: 0.28rem; margin-top: 0.15rem; }
