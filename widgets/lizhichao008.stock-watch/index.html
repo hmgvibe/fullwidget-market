@@ -1,0 +1,30 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- 下面的中文是简中兜底文案；main.js 启动时会按 widget.locale 覆盖成 zh-TW / zh-CN / en -->
+  <div class="list" id="list"></div>
+
+  <div class="adder" id="adder" hidden data-no-drag>
+    <button class="w-btn" id="addBtn" data-no-drag>＋ 新增股票</button>
+    <span class="adder-hint">按住拖动排序 · 点 − 移除</span>
+  </div>
+
+  <button class="w-btn edit" id="editBtn" data-no-drag></button>
+
+  <div class="search-view" id="searchView" hidden data-no-drag>
+    <div class="search-head">
+      <input class="w-input search-input" id="searchInput" type="text" autocomplete="off"
+             spellcheck="false" placeholder="代码 / 简称 / 拼音首字母" data-no-drag>
+      <button class="w-btn search-close" id="searchClose" title="返回 (Esc)" data-no-drag>✕</button>
+    </div>
+    <div class="search-results" id="searchResults" data-no-drag></div>
+    <div class="search-foot" id="searchFoot"></div>
+  </div>
+
+  <script src="main.js"></script>
+</body>
+</html>

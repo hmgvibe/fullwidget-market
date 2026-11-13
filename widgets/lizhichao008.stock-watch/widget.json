@@ -1,0 +1,106 @@
+{
+  // 组件的说明文件。可以写注释（像这两行）。
+  // 完整说明：控制中心 → 设置 → 开发文档
+  // name / description / 表单文案都按 zh-TW、zh-CN、en 三语给出。
+  "id": "lizhichao008.stock-watch",
+  "name": { "zh-TW": "自選股", "zh-CN": "自选股", "en": "Stock Watchlist" },
+  "description": {
+    "zh-TW": "自選股即時行情與分時走勢，可用代碼、簡稱或拼音首字母搜尋",
+    "zh-CN": "自选股实时行情与分时走势，可用代码、简称或拼音首字母搜索",
+    "en": "Live A-share quotes and intraday charts; search by code, name or pinyin initials"
+  },
+  "version": "1.8.0",
+  "author": "lizhichao008",
+  "entry": "index.html",
+  "icon": "icon.svg",
+  "category": "info",
+  "preview": "preview/{theme}.{lang}.webp",
+  "size": {
+    "width": 360,
+    "height": 208,
+    "minWidth": 250,
+    "minHeight": 140,
+    "maxWidth": 640,
+    "maxHeight": 480,
+    "resizable": true,
+    "grow": 1
+  },
+  "layer": "desktop",
+
+  // 行情与搜索都来自东方财富的公开接口；shell.open 只用于点击行打开行情页
+  "permissions": [
+    "network:push2his.eastmoney.com",
+    "network:searchapi.eastmoney.com",
+    "shell.open"
+  ],
+
+  // 控制中心「内容」页会照这里自动生成表单
+  "settings": [
+    {
+      "key": "stocks",
+      "type": "textarea",
+      "label": { "zh-TW": "自選股", "zh-CN": "自选股", "en": "Watchlist" },
+      "description": {
+        "zh-TW": "一行一檔，最多 12 檔。支援 002242.SZ、600989.SS、sh600519、sz000001 這幾種寫法",
+        "zh-CN": "一行一只，最多 12 只。支持 002242.SZ、600989.SS、sh600519、sz000001 这几种写法",
+        "en": "One ticker per line, up to 12. Accepts 002242.SZ, 600989.SS, sh600519, sz000001"
+      },
+      "default": "002242.SZ\n600989.SS\n002078.SZ"
+    },
+    {
+      "key": "search",
+      "type": "text",
+      "label": { "zh-TW": "搜尋並加入股票", "zh-CN": "搜索并添加股票", "en": "Search & add" },
+      "description": {
+        "zh-TW": "輸入代碼、簡稱或拼音首字母（如 600519、茅台、GZMT）。元件上會列出候選，點一下即可加入或移出自選",
+        "zh-CN": "输入代码、简称或拼音首字母（如 600519、茅台、GZMT）。组件上会列出候选，点一下即可加入或移出自选",
+        "en": "Type a code, name or pinyin initials (e.g. 600519, GZMT). Candidates appear on the widget; click to add or remove"
+      },
+      "placeholder": {
+        "zh-TW": "600519 / 茅台 / GZMT",
+        "zh-CN": "600519 / 茅台 / GZMT",
+        "en": "600519 / GZMT"
+      },
+      "default": ""
+    },
+    {
+      "key": "refresh",
+      "type": "select",
+      "label": { "zh-TW": "更新頻率", "zh-CN": "刷新频率", "en": "Refresh interval" },
+      "default": 30,
+      "options": [
+        { "value": 15, "label": { "zh-TW": "15 秒", "zh-CN": "15 秒", "en": "15 s" } },
+        { "value": 30, "label": { "zh-TW": "30 秒", "zh-CN": "30 秒", "en": "30 s" } },
+        { "value": 60, "label": { "zh-TW": "1 分鐘", "zh-CN": "1 分钟", "en": "1 min" } },
+        { "value": 300, "label": { "zh-TW": "5 分鐘", "zh-CN": "5 分钟", "en": "5 min" } }
+      ]
+    },
+    {
+      "key": "showChart",
+      "type": "toggle",
+      "label": { "zh-TW": "顯示分時走勢", "zh-CN": "显示分时走势", "en": "Intraday chart" },
+      "default": true
+    },
+    {
+      "key": "rightValue",
+      "type": "select",
+      "label": { "zh-TW": "右側數值", "zh-CN": "右侧数值", "en": "Right-hand value" },
+      "default": "amount",
+      "options": [
+        { "value": "amount", "label": { "zh-TW": "漲跌額", "zh-CN": "涨跌额", "en": "Change" } },
+        { "value": "percent", "label": { "zh-TW": "漲跌幅", "zh-CN": "涨跌幅", "en": "Change %" } }
+      ]
+    },
+    {
+      "key": "clickOpen",
+      "type": "toggle",
+      "label": { "zh-TW": "點擊打開行情頁", "zh-CN": "点击打开行情页", "en": "Click to open quote page" },
+      "description": {
+        "zh-TW": "單擊某一行，用瀏覽器打開東方財富的個股頁面",
+        "zh-CN": "单击某一行，用浏览器打开东方财富的个股页面",
+        "en": "Click a row to open the stock's Eastmoney page in a browser"
+      },
+      "default": true
+    }
+  ]
+}
