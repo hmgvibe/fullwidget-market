@@ -1,0 +1,499 @@
+/* <body> 就是卡片。背景、圆角、内距、字体、强调色全部由平台按主题注入 --w-*，
+   组件不写死任何卡片底色，这样控制中心改主题 / 透明度 / 强调色时会自动跟随。 */
+
+/* A 股语义色：涨红跌绿。亮度从主题前景色派生 —— 深色玻璃上偏亮、纸本浅底上压深、
+   无卡片的 type 主题上再提亮。市场标签只保留三个市场基色，底色 / 字色 / 描边
+   都由「基色 + --w-fg」现混，不再自带一套固定白字色板。 */
+:root {
+  --up: color-mix(in srgb, #f04438 88%, var(--w-fg));
+  --down: color-mix(in srgb, #16b364 88%, var(--w-fg));
+  --mkt-sh: #e08a3c;
+  --mkt-sz: #4d8bd6;
+  --mkt-bj: #9170cf;
+}
+/* 浅色纸卡：亮红亮绿在米白底上对比不足，换成深一档 */
+html[data-theme="paper"] {
+  --up: #d92d20;
+  --down: #0a8a4f;
+}
+/* 无卡片、文字直接浮在壁纸上：提亮涨跌色，标签底色和描边加重才有边界 */
+html[data-theme="type"] {
+  --up: color-mix(in srgb, #f04438 74%, var(--w-fg));
+  --down: color-mix(in srgb, #16b364 74%, var(--w-fg));
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  container-type: size;
+  overflow: hidden;
+}
+
+.list {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* ---------- 一行 ---------- */
+.row {
+  position: relative; /* 拖拽时的插入指示线 */
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px; /* 分时图左右各距最长文本 8px */
+  padding: 3px 0;
+}
+
+.row + .row {
+  border-top: 1px solid var(--w-rule);
+}
+
+/* 左侧组合：中文简称在上，市场标签 + 6 位代码在下。
+   列宽由 JS 按最长文本量出来（--col-id / --col-px），两边留 8px 后图形撑满中间；
+   各行列宽相同，所以分时图天然等宽、左右边界对齐。首次渲染前用百分比兜底。 */
+.id {
+  flex: 0 0 var(--col-id, 34%);
+  width: var(--col-id, 34%);
+  min-width: 0;
+  max-width: none;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+}
+
+.name {
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: 0.01em;
+  color: var(--w-fg);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+/* 沪 / 深 / 京 的半透明小标签，代替原来代码后面的 .SS / .SZ / .BJ。
+   字色 = 市场基色 + 主题前景色：深卡片自动成亮字，浅纸本自动成深字。 */
+.mkt {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.5em;
+  height: 1.5em;
+  padding: 0 4px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--mkt-c) 20%, transparent);
+  color: color-mix(in srgb, var(--mkt-c) 55%, var(--w-fg));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--mkt-c) 34%, transparent);
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1;
+}
+.mkt-sh { --mkt-c: var(--mkt-sh); }
+.mkt-sz { --mkt-c: var(--mkt-sz); }
+.mkt-bj { --mkt-c: var(--mkt-bj); }
+html[data-theme="paper"] .mkt {
+  background: color-mix(in srgb, var(--mkt-c) 13%, transparent);
+  color: color-mix(in srgb, var(--mkt-c) 80%, var(--w-fg));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--mkt-c) 24%, transparent);
+}
+html[data-theme="type"] .mkt {
+  background: color-mix(in srgb, var(--mkt-c) 30%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--mkt-c) 55%, transparent);
+}
+
+.code {
+  font-family: var(--w-font-num);
+  font-size: 0.78rem;
+  font-weight: 500;
+  line-height: 1.2;
+  letter-spacing: 0.02em;
+  color: var(--w-fg-muted);
+  white-space: nowrap;
+}
+
+/* 中间：分时走势 */
+.spark {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 34px;
+  align-self: stretch;
+  height: auto;
+  max-height: 46px;
+  padding: 3px 0; /* svg 绝对定位，inset:0 相对的是 padding box，所以这里留白就是折线的上下留白 */
+  overflow: hidden;
+}
+/* 绝对定位：不让 svg 的固有宽度（300px）参与 flex 计算，否则会把价格列挤出卡片。
+   宽高要显式给 100%，否则 svg 会按 viewBox 的方形比例收缩。 */
+.spark svg {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+/* 昨收虚线。用边框画，虚线间隔不会被横向拉伸。 */
+.spark .ref {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 0;
+  border-top: 1px dashed currentColor;
+  opacity: 0.5;
+}
+
+/* 右侧：价格 + 涨跌 */
+.px {
+  flex: 0 0 var(--col-px, 26%);
+  width: var(--col-px, 26%);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 1px;
+  text-align: right;
+}
+
+.price {
+  font-family: var(--w-font-num);
+  font-size: 1.12rem;
+  font-weight: 700;
+  line-height: 1.15;
+  color: var(--w-fg);
+  font-variant-numeric: tabular-nums;
+}
+
+.chg {
+  font-family: var(--w-font-num);
+  font-size: 0.88rem;
+  font-weight: 600;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+}
+
+.up { color: var(--up); }
+.down { color: var(--down); }
+.flat { color: var(--w-fg-muted); }
+
+/* ---------- 提示与空状态 ---------- */
+.empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  text-align: center;
+  font-size: 0.92rem;
+  color: var(--w-fg-muted);
+}
+.empty .sub {
+  font-size: 0.82rem;
+  color: var(--w-fg-faint);
+}
+.empty.err { color: var(--w-danger); }
+
+/* ---------- 卡片被缩小时 ----------
+   @container 量的是 body 的内容盒，已扣掉每边 padding 和窗外的阴影留白。
+   默认 360×208 时内容盒约 284×134。 */
+@container (max-width: 246px) {
+  .name { font-size: 0.96rem; }
+  .price { font-size: 1rem; }
+}
+
+/* 行高不够时（股票多、或者卡片被压扁），由 JS 按每行实际高度给 body 打标记。
+   normal ≥36px，compact ≥26，tiny ≥18，micro <18。
+   现在名称是主信息，所以矮行改成「名称 + 标签 + 代码」横向并排，不再把中文藏掉。 */
+body[data-density="compact"] .id,
+body[data-density="tiny"] .id,
+body[data-density="micro"] .id {
+  flex-direction: row;
+  align-items: baseline;
+  gap: 6px;
+  max-width: none;
+}
+/* 矮行把名称 + 标签 + 代码并成一行，左列要放宽；tiny/micro 本来就没有分时图 */
+body[data-density="compact"] .id { flex: 0 0 48%; width: 48%; }
+body[data-density="tiny"] .id,
+body[data-density="micro"] .id { flex: 1 1 auto; width: auto; }
+body[data-density="compact"] .name { font-size: 0.96rem; }
+
+body[data-density="tiny"] .spark,
+body[data-density="micro"] .spark {
+  display: none;
+}
+
+/* 窄卡片里放不下两行数字，价格和涨跌改成并排一行 */
+body[data-density="tiny"] .px,
+body[data-density="micro"] .px {
+  flex: 0 0 auto;
+  width: auto;
+  flex-direction: row;
+  align-items: baseline;
+  gap: 7px;
+}
+
+body[data-density="tiny"] .name { font-size: 0.9rem; }
+body[data-density="tiny"] .price { font-size: 0.98rem; }
+body[data-density="tiny"] .chg { font-size: 0.8rem; }
+body[data-density="tiny"] .row { padding: 1px 0; }
+
+body[data-density="micro"] .name { font-size: 0.84rem; }
+body[data-density="micro"] .mkt { font-size: 0.6rem; }
+body[data-density="micro"] .code { font-size: 0.7rem; }
+body[data-density="micro"] .price { font-size: 0.9rem; }
+body[data-density="micro"] .chg { font-size: 0.78rem; }
+body[data-density="micro"] .row { padding: 0; gap: 6px; }
+
+/* ---------- 编辑：照内置「快捷启动」组件的做法 ---------- */
+/* 类选择器上的 display 会盖过浏览器默认的 [hidden]，所以显式声明 */
+[hidden] { display: none !important; }
+
+/* 一个按钮：平时在右上角，鼠标移到卡片上才淡入；编辑时变「完成」并移到右下角 */
+.edit {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  font-size: 0.78rem;
+  opacity: 0;
+  transition: opacity 0.15s;
+  z-index: 3;
+}
+body:hover .edit,
+body.editing .edit,
+body.empty .edit { opacity: 1; }
+body.editing .edit {
+  top: auto;
+  bottom: calc(var(--w-padding) - 2px);
+  right: var(--w-padding);
+}
+body.is-searching .edit { display: none; }
+
+/* 编辑时底部的添加行；右侧留白给浮动的「完成」按钮 */
+.adder {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-top: 6px;
+  margin-top: 4px;
+  border-top: 1px solid var(--w-rule);
+}
+.adder .w-btn { font-size: 0.8rem; white-space: nowrap; }
+.adder-hint {
+  font-size: 0.72rem;
+  color: var(--w-fg-faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+body.editing .adder { padding-right: 4.5rem; }
+body.is-searching .adder { display: none; }
+
+/* 每行最前面的线性红色减号，只在编辑态渲染 */
+.minus {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 1.5px solid var(--w-danger);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  color: var(--w-danger);
+  cursor: pointer;
+}
+.minus::before {
+  content: "";
+  width: 9px;
+  height: 1.5px;
+  border-radius: 1px;
+  background: currentColor;
+}
+.minus:hover { background: color-mix(in srgb, var(--w-danger) 16%, transparent); }
+
+body.editing .spark { display: none; }
+/* 编辑态没有分时图，左列占满中间、右列按内容靠右；默认尺寸仍是两行组合 */
+body.editing .id {
+  flex: 1 1 auto;
+  width: auto;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  max-width: none;
+}
+body.editing .px { flex: 0 0 auto; width: auto; opacity: 0.55; }
+body.editing .name { font-size: 0.9rem; }
+body.editing .mkt { font-size: 0.6rem; }
+body.editing .code { font-size: 0.7rem; }
+/* hover / 拖拽高亮都直接画在 .row 上，铺满整行（红框范围）；
+   内容用 padding 左右各留 8px（黄色间距），减号和价格不贴边。
+   不用 margin，也不用内层高亮块，否则高亮范围会小于行容器。 */
+body.editing .row { overflow: hidden; padding: 0 8px; margin: 0; }
+body.editing .row:hover { background: var(--w-hover); }
+
+/* 编辑态按住任意一行即可排序 */
+body.editing .row {
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+body.dragging .row {
+  cursor: grabbing;
+  transition: opacity 0.12s, background 0.12s, transform 0.12s;
+}
+body.dragging .row:not(.is-dragging) { opacity: 0.5; }
+.row.is-dragging {
+  opacity: 1;
+  background: var(--w-hover);
+  outline: 2px solid var(--w-accent);
+  outline-offset: -2px;
+  box-shadow: var(--w-shadow);
+  transform: scale(1.015);
+  z-index: 2;
+}
+/* 插入位置的高亮指示线，范围同样铺满整行 */
+.row.drop-before::before,
+.row.drop-after::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--w-accent);
+  box-shadow: 0 0 8px var(--w-accent);
+  z-index: 1;
+}
+.row.drop-before::before { top: 0; }
+.row.drop-after::after { bottom: 0; }
+
+/* 极矮卡片：最小尺寸 250×140 时内容盒只有约 174×64px。
+   默认尺寸不会命中（约 284×132px）。这里优先保证「名称 + 标签 + 代码 + 减号」清楚可点。 */
+@container (max-height: 90px) {
+  .adder { padding-top: 2px; margin-top: 2px; }
+  .adder-hint { display: none; }
+  .adder .w-btn { font-size: 0.74rem; padding: 1px 7px; }
+  body.editing .adder { padding-right: 0; }
+  /* 「完成」是相对 padding box 定位的，往上抬一个内距才和添加按钮同一水平线 */
+  body.editing .edit { bottom: calc(var(--w-padding) - 4px); right: 2px; font-size: 0.72rem; }
+  body.editing .px { display: none; }
+  /* 极矮卡片实在放不下两行，名称 / 标签 / 代码回到同一行 */
+  body.editing .id { flex: 1 1 auto; flex-direction: row; align-items: center; max-width: none; gap: 4px; }
+  body.editing .row { gap: 4px; padding: 0 6px; }
+  body.editing .name { font-size: 0.75rem; }
+  body.editing .mkt { font-size: 0.58rem; }
+  body.editing .code { font-size: 0.66rem; }
+  body.editing .minus { width: 13px; height: 13px; }
+  body.editing .minus::before { width: 7px; }
+}
+
+/* ---------- 搜索并添加 ---------- */
+.search-view {
+  position: absolute;
+  inset: var(--w-padding); /* 绝对定位相对 padding box，这样才和行情列表对齐 */
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-height: 0;
+}
+
+.search-head { display: flex; align-items: center; gap: 6px; flex: none; }
+.search-input { flex: 1 1 auto; min-width: 0; font-size: 0.9rem; }
+.search-close { flex: none; font-size: 0.9rem; line-height: 1; }
+
+.search-results {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: var(--w-fg-faint) transparent;
+  /* 列表底部柔和淡出，被裁到的那一行不会硬生生切断 */
+  -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 88%, transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 0, #000 88%, transparent 100%);
+}
+
+/* 一条候选压在一行里：卡片默认高度有限，行越矮首屏能看到的越多 */
+.hit {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  padding: 3px 6px;
+  border-radius: 7px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.hit:hover { background: var(--w-hover); }
+.hit .mkt { font-size: 0.62rem; height: 1.35em; min-width: 1.4em; }
+.hit .h-code {
+  flex: none;
+  font-family: var(--w-font-num);
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--w-fg);
+}
+.hit .h-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 0.82rem;
+  color: var(--w-fg);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.hit .h-sub {
+  flex: none;
+  font-family: var(--w-font-num);
+  font-size: 0.7rem;
+  color: var(--w-fg-faint);
+}
+.hit .h-add { flex: none; margin-left: 3px; font-size: 0.74rem; color: var(--w-accent); }
+.hit.is-added .h-add { color: var(--w-fg-muted); }
+.hit.is-added .h-code { color: var(--w-fg-muted); }
+.hit.is-added:hover .h-add { color: var(--w-danger); }
+
+.search-foot {
+  flex: none;
+  text-align: center;
+  font-size: 0.7rem;
+  line-height: 1.2;
+  color: var(--w-fg-faint);
+}
+.search-note {
+  padding: 14px 4px;
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--w-fg-muted);
+}
+.search-note.err { color: var(--w-danger); }
+
+@container (max-width: 246px) {
+  .hit .h-sub { display: none; }
+}
+@container (max-height: 130px) {
+  .hit { padding: 1px 5px; }
+  .search-foot { display: none; }
+}
+
+/* 量列宽时临时让左右两列按内容自适应。!important 用来压过 density、编辑态、
+   @container 这些后写的覆盖规则，否则量到的是被限制之后的宽度。 */
+.list.measuring .id,
+.list.measuring .px {
+  flex: 0 0 auto !important;
+  width: max-content !important;
+  max-width: none !important;
+}
