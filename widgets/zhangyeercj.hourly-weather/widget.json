@@ -6,7 +6,7 @@
     "zh-CN": "每小时气温曲线与降水概率",
     "en": "An hourly temperature curve with rain chance"
   },
-  "version": "1.1.0",
+  "version": "1.1.1",
   "author": "zhangyeercj",
   "preview": "preview/{theme}.{lang}.webp",
   "entry": "index.html",
