@@ -374,12 +374,36 @@ new ResizeObserver(() => {
 widget.settings.onChange((s) => { opts = s; refresh(); });
 widget.appearance.onChange(() => { if (data) render(); });
 
+// 刷新节奏：成功就等 15 分钟；失败则 90 秒后先试一次，之后翻倍退避，最长仍按 15 分钟。
+// 宿主复用空闲连接时会整条卡到 20 秒超时，连续失败两次就重载一次页面把连接重建（10 分钟内最多一次）。
+const RELOAD_KEY = "hw-last-reload";
+let failStreak = 0;
+let timer = null;
+function autoReload() {
+  const last = Number(sessionStorage.getItem(RELOAD_KEY) || 0);
+  if (Date.now() - last < 10 * 60e3) return false;
+  sessionStorage.setItem(RELOAD_KEY, String(Date.now()));
+  return true;
+}
+function schedule() {
+  clearTimeout(timer);
+  if (failed && failStreak >= 2 && autoReload()) {
+    timer = setTimeout(() => location.reload(), 4000);
+    return;
+  }
+  const wait = failed
+    ? Math.min(REFRESH, 90e3 * Math.pow(2, Math.min(failStreak, 4)))
+    : REFRESH;
+  failStreak = failed ? failStreak + 1 : 0;
+  timer = setTimeout(async () => { await refresh(); schedule(); }, wait);
+}
+
 (async () => {
   data = await widget.storage.get("last");
   if (data && data.unit !== opts.unit) data = null;
   if (data) render();
   else showMessage(t({ "zh-TW": "正在取得天氣…", "zh-CN": "正在获取天气…", en: "Loading…" }), false);
   if (!data || Date.now() - data.at > REFRESH) await refresh();
-  setInterval(refresh, REFRESH);
+  schedule();
   setInterval(updateAgo, 20e3);
 })();
