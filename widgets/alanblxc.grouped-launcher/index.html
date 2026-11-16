@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>分组启动台</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="header"><div class="heading"><h1 id="title" class="w-title">分组启动台</h1></div><button id="edit" class="w-btn edit" data-no-drag disabled aria-label="编辑启动台" title="编辑启动台">编辑</button></header>
+  <div class="tabbar" data-no-drag><nav id="tabs" class="tabs" role="tablist" aria-label="软件分组"></nav><button id="new-group" class="w-btn new-group" aria-label="新建分组标签页" title="新建分组" hidden>＋</button></div>
+  <section class="workspace" role="tabpanel" id="group-page" aria-label="当前分组的软件"><div class="section-label"><span id="view-name">快捷方式</span><span id="item-count">0 个</span></div><div id="items" class="items" role="listbox" aria-label="快捷方式，上下键选择，回车打开，删除键移除" tabindex="0" data-no-drag></div><div id="empty" class="empty" hidden><span class="empty-symbol" aria-hidden="true">＋</span><strong>这个分组还没有软件</strong><span>点击编辑添加，或将文件和网址拖到这里</span></div></section>
+  <footer class="statusbar"><span id="status" role="status">正在读取…</span><button id="retry-save" hidden>重试保存</button><button id="retry-load" hidden>重新读取</button><span id="hint">双击打开 · 拖入添加</span></footer>
+  <section id="editor" class="editor" aria-label="编辑启动台" hidden data-no-drag>
+    <label id="current-mode-label" class="current-mode" hidden>当前分组显示<select id="current-mode"><option value="grid">图标</option><option value="list">列表</option></select></label>
+    <div class="toolbar"><button id="add-program" class="w-btn">＋ 程序</button><button id="add-file" class="w-btn">＋ 文件</button><button id="add-folder" class="w-btn">＋ 文件夹</button><button id="toggle-url" class="w-btn">＋ 网址</button><button id="manage" class="w-btn">分组设置</button></div>
+    <form id="url-form" class="panel" hidden><label>网址<input id="url" type="text" placeholder="example.com" required></label><label>名称（可选）<input id="url-name" maxlength="120" placeholder="网站名称"></label><button type="submit" class="primary">添加网址</button></form>
+    <form id="group-form" class="panel" hidden>
+      <label>选择分组<select id="group-select"></select></label>
+      <label>分组名称<input id="group-name" maxlength="40" required placeholder="例如：工作、设计、游戏"></label>
+      <label>分组页排版<select id="group-mode"><option value="grid">图标网格</option><option value="list">紧凑列表</option></select></label>
+      <div class="toolbar"><button type="submit" class="primary">保存分组</button><button id="group-prev" type="button">前移</button><button id="group-next" type="button">后移</button><button id="group-delete" class="danger" type="button">删除分组</button></div>
+      <div id="confirm-delete" class="confirmation" hidden><span>仅删除分组标签，软件入口保留在全部页，不会删除文件。</span><button id="confirm-yes" class="danger" type="button">确定删除</button><button id="confirm-no" type="button">取消</button></div>
+    </form>
+  </section>
+  <div id="undo" class="notice" role="status" hidden><span>已移除快捷方式</span><button id="undo-button">撤销</button></div>
+  <div id="error" class="error" role="alert" hidden><span id="error-message"></span><button id="dismiss-error" aria-label="关闭错误提示">×</button></div>
+  <script src="model.js"></script>
+  <script src="main.js"></script>
+</body>
+</html>
