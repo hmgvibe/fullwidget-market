@@ -9,7 +9,7 @@
     "zh-CN": "自选股实时行情与分时走势，可用代码、简称或拼音首字母搜索",
     "en": "Live A-share quotes and intraday charts; search by code, name or pinyin initials"
   },
-  "version": "1.8.0",
+  "version": "1.11.0",
   "author": "lizhichao008",
   "entry": "index.html",
   "icon": "icon.svg",

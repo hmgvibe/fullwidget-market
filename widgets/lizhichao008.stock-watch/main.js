@@ -15,6 +15,26 @@ const I18N = {
   mktShTitle:    { "zh-TW": "滬市 · 上證", "zh-CN": "沪市 · 上证", en: "Shanghai Stock Exchange" },
   mktSzTitle:    { "zh-TW": "深市 · 深證", "zh-CN": "深市 · 深证", en: "Shenzhen Stock Exchange" },
   mktBjTitle:    { "zh-TW": "北交所", "zh-CN": "北交所", en: "Beijing Stock Exchange" },
+  mktIdx:        { "zh-TW": "指數", "zh-CN": "指数", en: "IDX" },
+  mktIdxTitle:   { "zh-TW": "市場指數 · 上證 / 深證 / 北證", "zh-CN": "市场指数 · 上证 / 深证 / 北证", en: "Market index" },
+  mktHk:         { "zh-TW": "港", "zh-CN": "港", en: "HK" },
+  mktUs:         { "zh-TW": "美", "zh-CN": "美", en: "US" },
+  mktFut:        { "zh-TW": "期", "zh-CN": "期", en: "FUT" },
+  mktFx:         { "zh-TW": "匯", "zh-CN": "汇", en: "FX" },
+  mktBond:       { "zh-TW": "債", "zh-CN": "债", en: "BND" },
+  mktBlock:      { "zh-TW": "板", "zh-CN": "板", en: "SEC" },
+  mktGlobal:     { "zh-TW": "全球", "zh-CN": "全球", en: "GLB" },
+  mktFund:       { "zh-TW": "基", "zh-CN": "基", en: "FD" },
+  mktOtc:        { "zh-TW": "外", "zh-CN": "外", en: "OTC" },
+  mktHkTitle:    { "zh-TW": "港股", "zh-CN": "港股", en: "Hong Kong stocks" },
+  mktUsTitle:    { "zh-TW": "美股", "zh-CN": "美股", en: "US stocks" },
+  mktFutTitle:   { "zh-TW": "期貨", "zh-CN": "期货", en: "Futures" },
+  mktFxTitle:    { "zh-TW": "外匯", "zh-CN": "外汇", en: "Foreign exchange" },
+  mktBondTitle:  { "zh-TW": "債券", "zh-CN": "债券", en: "Bonds" },
+  mktBlockTitle: { "zh-TW": "板塊", "zh-CN": "板块", en: "Sector" },
+  mktGlobalTitle:{ "zh-TW": "全球指數", "zh-CN": "全球指数", en: "Global index" },
+  mktFundTitle:  { "zh-TW": "基金", "zh-CN": "基金", en: "Fund" },
+  mktOtcTitle:   { "zh-TW": "境外 / 其它市場", "zh-CN": "境外 / 其它市场", en: "Overseas / other market" },
   searchPh:      { "zh-TW": "代碼 / 簡稱 / 拼音首字母", "zh-CN": "代码 / 简称 / 拼音首字母", en: "Code / name / initials" },
   backTitle:     { "zh-TW": "返回 (Esc)", "zh-CN": "返回 (Esc)", en: "Back (Esc)" },
   noMatch:       { "zh-TW": "找不到符合的 A 股", "zh-CN": "没有找到匹配的 A 股", en: "No matching A-shares" },
@@ -34,6 +54,10 @@ const I18N = {
   noStocksSub:   { "zh-TW": "點「編輯」→「＋ 新增股票」，或在控制中心搜尋", "zh-CN": "点「编辑」→「＋ 新增股票」，或在控制中心搜索", en: "Click Edit → + Add stock, or search in Control Center" },
   quoteError:    { "zh-TW": "行情取得失敗", "zh-CN": "行情获取失败", en: "Couldn't load quotes" },
   quoteErrorSub: { "zh-TW": "檢查網路，或允許元件存取東方財富", "zh-CN": "检查网络，或允许组件访问东方财富", en: "Check the network, or allow access to Eastmoney" },
+  netOffline:    { "zh-TW": "離線", "zh-CN": "离线", en: "offline" },
+  netOfflineTitle:{ "zh-TW": "行情刷新失敗，顯示的是上一次的數據", "zh-CN": "行情刷新失败，显示的是上一次的数据", en: "Refresh failed — showing last data" },
+  notFound:      { "zh-TW": "找不到這隻股票", "zh-CN": "找不到这只股票", en: "Not found" },
+  notFoundTitle: { "zh-TW": "查無行情：代碼可能輸錯，或該品種暫無數據（{code}）", "zh-CN": "查无行情：代码可能输错，或该品种暂无数据（{code}）", en: "No quotes: wrong code, or no data for this instrument ({code})" },
 };
 const tx = (key, vars) => {
   let s = widget.t(I18N[key]);
@@ -59,6 +83,18 @@ const searchInput = $("searchInput");
 const searchResults = $("searchResults");
 const searchFoot = $("searchFoot");
 const searchCloseBtn = $("searchClose");
+const netBadge = $("netBadge");
+
+// 离线角标：刷新失败、但画面上还留着上一次的行情时挂出来，
+// 免得旧价看起来像实时价。正常拉到数据就收回。
+function setOffline(on) {
+  if (netBadge) {
+    netBadge.textContent = tx("netOffline");
+    netBadge.title = tx("netOfflineTitle");
+    netBadge.hidden = !on;
+  }
+  document.body.classList.toggle("offline", on);
+}
 
 const QUOTE_API = "https://push2his.eastmoney.com/api/qt/stock/get";
 const TREND_API = "https://push2his.eastmoney.com/api/qt/stock/trends2/get";
@@ -94,28 +130,44 @@ function suffixFor(market, digits) {
   return /^[48]/.test(digits) ? "BJ" : "SZ";
 }
 
-// "002242.SZ" / "600989.SS" / "sh600519" / "600519" → { key, secid, code, label }
-// 东财的 secid：1 = 上交所，0 = 深交所 / 北交所
-function parseOne(raw) {
-  const s = String(raw || "").trim();
-  if (!s) return null;
-  const m = s.match(/^(sh|sz|bj)?(\d{6})(?:[.\-_]?(sh|sz|bj|ss))?$/i);
-  if (!m) return null;
-
-  const digits = m[2];
-  const tag = (m[3] || m[1] || "").toLowerCase();
-
-  let market;
-  if (tag === "sh" || tag === "ss") market = 1;
-  else if (tag === "sz" || tag === "bj") market = 0;
-  else market = /^[569]/.test(digits) ? 1 : 0; // 6/9 沪市，5 沪基金
-
+// "002242.SZ" / "600989.SS" / "sh600519" / "600519" → A 股
+// "116.00700"（港股）/ "105.AAPL"（美股）/ "90.BK0475"（板块）→ 直接写东财 secid
+// 东财的 secid：1 = 上交所，0 = 深交所 / 北交所，其余是港美期汇等市场的编号
+function aShareItem(market, digits) {
   return {
     key: `${market}.${digits}`,
     secid: `${market}.${digits}`,
     code: digits,
     label: `${digits}.${suffixFor(market, digits)}`,
+    market,
   };
+}
+
+function parseOne(raw) {
+  const s = String(raw || "").trim();
+  if (!s) return null;
+
+  // A 股：6 位代码，可带 sh/sz/bj/ss 前后缀
+  const m = s.match(/^(sh|sz|bj)?(\d{6})(?:[.\-_]?(sh|sz|bj|ss))?$/i);
+  if (m) {
+    const digits = m[2];
+    const tag = (m[3] || m[1] || "").toLowerCase();
+    let market;
+    if (tag === "sh" || tag === "ss") market = 1;
+    else if (tag === "sz" || tag === "bj") market = 0;
+    else market = /^[569]/.test(digits) ? 1 : 0; // 6/9 沪市，5 沪基金
+    return aShareItem(market, digits);
+  }
+
+  // 其它市场：直接给 secid（market.code），code 可以是字母，如 105.AAPL
+  const g = s.match(/^(\d{1,3})\.([A-Za-z0-9._-]{1,20})$/);
+  if (g) {
+    const market = Number(g[1]);
+    const code = g[2];
+    if ((market === 0 || market === 1) && /^\d{6}$/.test(code)) return aShareItem(market, code);
+    return { key: `${market}.${code}`, secid: `${market}.${code}`, code, label: `${market}.${code}`, market };
+  }
+  return null;
 }
 
 function parseStocks(text) {
@@ -131,20 +183,115 @@ function parseStocks(text) {
   return out;
 }
 
-// 搜索结果里的 QuoteID（如 "0.002242"）转成我们自己的代码格式
+// 搜索结果里的 QuoteID（如 "0.002242" / "116.00700"）转成我们自己的代码格式：
+// A 股继续用 600519.SS 这种可读写法，其它市场原样用 secid。
 function labelFromSecid(secid) {
-  const parts = String(secid || "").split(".");
-  if (parts.length !== 2 || !/^[01]$/.test(parts[0]) || !/^\d{6}$/.test(parts[1])) return null;
-  return `${parts[1]}.${suffixFor(parts[0], parts[1])}`;
+  const m = String(secid || "").match(/^(\d{1,3})\.([A-Za-z0-9._-]{1,20})$/);
+  if (!m) return null;
+  const market = Number(m[1]);
+  const code = m[2];
+  if ((market === 0 || market === 1) && /^\d{6}$/.test(code)) return `${code}.${suffixFor(market, code)}`;
+  return `${market}.${code}`;
 }
 
-// 显示用的市场标签。后缀只留在 label 里用于写回设置和去重，画面上一律不显示。
+// 指数没有自己的后缀，用代码段判断：沪市 000xxx、深市 399xxx、北交所 899xxx 是指数，
+// 而沪市股票是 6xxxxx、深市股票是 000/002/003/30xxxx，两段互不重叠，不会误判。
+function isIndexCode(digits, market) {
+  const d = String(digits || "");
+  if (Number(market) === 1) return d.startsWith("000");
+  if (d.startsWith("899")) return true;
+  return d.startsWith("399");
+}
+
+// 品种 → 标签。搜索时把东财的 Classify 记进缓存，重启后靠持久化的 searchIndex 恢复；
+// 缓存里没有就按市场编号兜底，所以手写 116.00700 也能显示「港」。
+const CLASS_TAG = {
+  HongKong: "hk",
+  HK: "hk",
+  HKDerivative: "hk",
+  HKSTOCKF: "hk",
+  UsStock: "us",
+  OTCBB: "us",
+  LSE: "otc",
+  XETR: "otc",
+  SGE: "otc",
+  Futures: "fut",
+  UniversalFutures: "fut",
+  SHFESP: "fut",
+  SHFEOPTION: "fut",
+  FOREX: "fx",
+  FORPM: "fx",
+  Bond: "bond",
+  BK: "block",
+  QQZS: "global",
+  NDI: "global",
+  UniversalIndex: "global",
+  OTCFUND: "fund",
+};
+const MARKET_TAG = {
+  90: "block",
+  100: "global",
+  105: "us",
+  106: "us",
+  107: "us",
+  113: "fut",
+  116: "hk",
+  118: "otc",
+  119: "fx",
+  122: "fx",
+  124: "global",
+  128: "hk",
+  130: "hk",
+  139: "hk",
+  150: "fund",
+  153: "us",
+  155: "otc",
+  185: "otc",
+  251: "global",
+};
+
+const classCache = new Map(); // secid -> Classify（来自搜索）
+
+function cachedHit(secid) {
+  return classCache.get(secid) || searchIndex.find((x) => x.secid === secid) || null;
+}
+
 function marketOf(label) {
   const s = String(label || "");
-  if (/\.SS$/i.test(s)) return { cls: "sh", text: tx("mktSh"), title: tx("mktShTitle") };
-  if (/\.BJ$/i.test(s)) return { cls: "bj", text: tx("mktBj"), title: tx("mktBjTitle") };
-  return { cls: "sz", text: tx("mktSz"), title: tx("mktSzTitle") };
+
+  // A 股 6 位代码：沿用 沪 / 深 / 京 / 指数
+  const m = s.match(/^(\d{6})\.(SS|SZ|BJ)$/i);
+  if (m) {
+    const market = /^SS$/i.test(m[2]) ? 1 : 0;
+    if (isIndexCode(m[1], market)) return TAG.idx;
+    return /^SS$/i.test(m[2]) ? TAG.sh : /^BJ$/i.test(m[2]) ? TAG.bj : TAG.sz;
+  }
+
+  // 其它市场：先看搜索缓存里的 Classify，再按市场编号兜底
+  const g = s.match(/^(\d{1,3})\./);
+  const market = g ? Number(g[1]) : NaN;
+  const hit = cachedHit(s);
+  let kind = (hit && hit.cls && CLASS_TAG[hit.cls]) || MARKET_TAG[market] || "";
+  if (!kind && (market === 0 || market === 1)) kind = "stock"; // 手写的 1.600519 之类
+  if (kind === "stock") return TAG.sz;
+  return TAG[kind] || TAG.otc;
 }
+
+const TAG = {
+  sh: { cls: "sh", text: tx("mktSh"), title: tx("mktShTitle") },
+  sz: { cls: "sz", text: tx("mktSz"), title: tx("mktSzTitle") },
+  bj: { cls: "bj", text: tx("mktBj"), title: tx("mktBjTitle") },
+  idx: { cls: "idx", text: tx("mktIdx"), title: tx("mktIdxTitle") },
+  hk: { cls: "hk", text: tx("mktHk"), title: tx("mktHkTitle") },
+  us: { cls: "us", text: tx("mktUs"), title: tx("mktUsTitle") },
+  fut: { cls: "fut", text: tx("mktFut"), title: tx("mktFutTitle") },
+  fx: { cls: "fx", text: tx("mktFx"), title: tx("mktFxTitle") },
+  bond: { cls: "bond", text: tx("mktBond"), title: tx("mktBondTitle") },
+  block: { cls: "block", text: tx("mktBlock"), title: tx("mktBlockTitle") },
+  global: { cls: "global", text: tx("mktGlobal"), title: tx("mktGlobalTitle") },
+  fund: { cls: "fund", text: tx("mktFund"), title: tx("mktFundTitle") },
+  otc: { cls: "otc", text: tx("mktOtc"), title: tx("mktOtcTitle") },
+};
 
 /* ---------------------------------------------------------------- 数据获取 */
 
@@ -207,8 +354,26 @@ async function fetchTrends(list) {
   return out;
 }
 
+// 搜索框里可能粘的是完整代码："000001.SH" / "sh000001" / "1.000001"，
+// 东财联想接口只认 6 位数字（带后缀直接返回 0 条），所以先归一化再查。
+// 同时把用户写的市场（SH/SS → 沪，SZ/BJ → 深/北）记下来，用来把结果收窄到他想要的那个。
+function parseQuery(q) {
+  const s = String(q || "").trim();
+  const m =
+    s.match(/^(sh|ss|sz|bj)?[\s:]?(\d{6})(?:[.\-_]?(sh|ss|sz|bj))?$/i) ||
+    s.match(/^(\d{1,3})\.([A-Za-z0-9._-]{1,20})$/);
+  if (!m) return { text: s, market: null };
+  const head = m[1];
+  if (head === "0" || head === "1") return { text: m[2], market: Number(head) }; // 1.000001 这类 secid
+  if (/^\d{1,3}$/.test(head)) return { text: m[2], market: Number(head) }; // 116.00700 港股
+  const tag = (m[3] || head || "").toLowerCase();
+  const market = tag ? (tag === "sh" || tag === "ss" ? 1 : 0) : null;
+  return { text: m[2], market };
+}
+
 // 东财的联想搜索：代码 / 中文简称 / 拼音首字母都能命中。
-// type=14 是股票分类，结果里混着港股、美股、基金，只留 AStock。
+// type=14 是证券分类，结果涵盖 A 股、指数、基金、港股、美股、期货、外汇、债券、板块……
+// 这里**不再按品种过滤**，能搜到就能加；标签按 Classify 显示，取不到行情的品种显示 —。
 // 返回体是 UTF-8 JSON，widget.fetch 的 r.json() 中文正常（已验证）。
 async function fetchSuggest(q) {
   const url = `${SUGGEST_API}?input=${encodeURIComponent(q)}&type=14&count=50`;
@@ -218,17 +383,19 @@ async function fetchSuggest(q) {
   const rows = (json && json.QuotationCodeTable && json.QuotationCodeTable.Data) || [];
   const out = [];
   for (const d of rows) {
-    if (d.Classify !== "AStock") continue;
+    const cls = String(d.Classify || "");
+    if (!cls || cls === "OTCFUND_HK") continue;
     const secid = String(d.QuoteID || "");
     const label = labelFromSecid(secid);
     if (!label) continue;
     out.push({
       secid,
-      code: String(d.Code || secid.split(".")[1]),
+      code: String(d.Code || secid.split(".")[1] || ""),
       label,
       name: String(d.Name || ""),
       py: String(d.PinYin || "").toUpperCase(),
       board: String(d.SecurityTypeName || ""),
+      cls,
     });
   }
   return out;
@@ -301,7 +468,11 @@ function render(cfg, quotes, charts) {
       const change = q ? q.change : null;
       const percent = q ? q.percent : null;
       const prevClose = q ? q.prevClose : null;
-      const name = q && q.name ? q.name : "——";
+      // 取不到行情时（停牌 / 期货未开盘 / 海外延迟等）用搜索缓存里的名字兜底，
+      // 至少不会显示成一个空行；连缓存都没有（多半是输错代码，如 999999）就明确提示找不到
+      const cached = cachedHit(it.secid);
+      const missing = !q && !cached;
+      const name = (q && q.name) || (cached && cached.name) || (missing ? tx("notFound") : "——");
 
       const dir = !Number.isFinite(change) || change === 0 ? "flat" : change > 0 ? "up" : "down";
       const priceText = Number.isFinite(price) ? price.toFixed(digits) : "—";
@@ -316,11 +487,11 @@ function render(cfg, quotes, charts) {
 
       // 组合样式：中文简称是主标题，下面一行是市场标签 + 6 位代码（不带 .SS/.SZ）
       // 编辑态的线性减号放在最前面，也就是股票名称之前
-      return `<div class="row" data-key="${it.key}"${editing ? " data-no-drag" : ""}>
+      return `<div class="row${missing ? " is-missing" : ""}" data-key="${it.key}"${editing ? " data-no-drag" : ""}>
         ${editing ? `<button class="minus" data-key="${it.key}" title="${esc(tx("removeTitle", { name }))}"
                        data-no-drag aria-label="${esc(tx("remove"))}"></button>` : ""}
         <div class="id">
-          <div class="name">${esc(name)}</div>
+          <div class="name"${missing ? ` title="${esc(tx("notFoundTitle", { code: it.code }))}"` : ""}>${esc(name)}</div>
           <div class="meta">
             <span class="mkt mkt-${mkt.cls}" title="${mkt.title}">${mkt.text}</span>
             <span class="code">${esc(it.code)}</span>
@@ -445,7 +616,10 @@ async function saveOrder(keys) {
 async function loadIndex() {
   try {
     const saved = await widget.storage.get(INDEX_KEY);
-    if (Array.isArray(saved)) searchIndex = saved;
+    if (Array.isArray(saved)) {
+      searchIndex = saved;
+      for (const x of saved) if (x && x.secid && x.cls) classCache.set(x.secid, x.cls);
+    }
   } catch (err) {
     // 没有索引也能用在线搜索
   }
@@ -453,11 +627,40 @@ async function loadIndex() {
 
 function remember(hits) {
   if (!hits.length) return;
+  for (const h of hits) if (h.cls) classCache.set(h.secid, h.cls);
   const map = new Map(searchIndex.map((x) => [x.secid, x]));
   for (const h of hits) map.set(h.secid, h);
   searchIndex = [...map.values()].slice(-INDEX_LIMIT);
   Promise.resolve(widget.storage.set(INDEX_KEY, searchIndex)).catch(() => {});
 }
+
+// 品种优先级：常见品种排在前面，衍生品 / 场外之类靠后，避免搜索被刷屏
+const CLASS_RANK = {
+  AStock: 0,
+  Index: 1,
+  Fund: 2,
+  HK: 3,
+  UsStock: 4,
+  Bond: 5,
+  BK: 6,
+  UniversalIndex: 7,
+  QQZS: 7,
+  NDI: 7,
+  FOREX: 8,
+  FORPM: 8,
+  OTCFUND: 8,
+  Futures: 9,
+  UniversalFutures: 9,
+  SHFESP: 9,
+  SHFEOPTION: 9,
+  OTCBB: 9,
+  LSE: 9,
+  XETR: 9,
+  SGE: 9,
+  HKDerivative: 10,
+  HKSTOCKF: 10,
+};
+const rankOf = (h) => (h && h.cls && CLASS_RANK[h.cls] !== undefined ? CLASS_RANK[h.cls] : 6);
 
 // 匹配度：精确 > 前缀 > 包含；代码 > 简称 > 拼音
 function score(hit, q) {
@@ -511,11 +714,15 @@ function renderResults(hits, info = {}) {
   searchFoot.textContent = info.foot || "";
 }
 
-async function runSearch(q) {
+async function runSearch(raw) {
   const seq = ++searchSeq;
+  const parsed = parseQuery(raw);
+  const q = parsed.text; // 归一化后的关键词：接口用、打分也用
+  const inMarket = (h) => parsed.market === null || String(h.secid).startsWith(parsed.market + ".");
 
   // 先用本地索引即时出结果，在线搜索回来后再合并
   const local = searchIndex
+    .filter(inMarket)
     .map((h) => ({ h, s: score(h, q) }))
     .filter((x) => x.s > 0)
     .sort((a, b) => b.s - a.s)
@@ -523,7 +730,12 @@ async function runSearch(q) {
   renderResults(local, { note: tx("searching"), foot: local.length ? tx("localResults") : "" });
 
   try {
-    const remote = await fetchSuggest(q);
+    let remote = await fetchSuggest(q);
+    // 用户写了市场（如 000001.SH）就只留那个市场的；万一没有结果再放开
+    if (parsed.market !== null) {
+      const narrowed = remote.filter(inMarket);
+      if (narrowed.length) remote = narrowed;
+    }
     if (seq !== searchSeq) return;
     remember(remote);
 
@@ -535,7 +747,7 @@ async function runSearch(q) {
       if (!old || old.s < s) merged.set(h.secid, { h, s });
     }
     const ranked = [...merged.values()]
-      .sort((a, b) => b.s - a.s || a.h.code.localeCompare(b.h.code))
+      .sort((a, b) => b.s - a.s || rankOf(a.h) - rankOf(b.h) || a.h.code.localeCompare(b.h.code))
       .map((x) => x.h);
     renderResults(ranked, {
       note: tx("noMatch"),
@@ -639,12 +851,33 @@ function readSettings() {
   };
 }
 
-// 交易时段：周一到周五 09:15–11:35、12:55–15:05
+// 交易时段：周一到周五 09:15–11:35、12:55–15:05，按**北京时间**判断。
+// 海外用户的电脑时区不是 UTC+8，所以不用本地时间，改用 Intl 取 Asia/Shanghai；
+// 环境不支持该时区表时退回本地时间（错误的方向总比崩溃好）。
+const BJ_FMT = new Intl.DateTimeFormat("en-US", {
+  timeZone: "Asia/Shanghai",
+  weekday: "short",
+  hour: "numeric",
+  minute: "numeric",
+  hour12: false,
+});
+const WEEKDAYS = { Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5 };
+
+function beijingClock(now = new Date()) {
+  try {
+    const parts = {};
+    for (const p of BJ_FMT.formatToParts(now)) parts[p.type] = p.value;
+    const hour = Number(parts.hour) === 24 ? 0 : Number(parts.hour); // en-US 的 24:00 写法
+    return { weekday: WEEKDAYS[parts.weekday] || 0, minute: hour * 60 + Number(parts.minute) };
+  } catch (err) {
+    return { weekday: now.getDay(), minute: now.getHours() * 60 + now.getMinutes() };
+  }
+}
+
 function isTradingTime(now = new Date()) {
-  const day = now.getDay();
-  if (day === 0 || day === 6) return false;
-  const m = now.getHours() * 60 + now.getMinutes();
-  return (m >= 555 && m <= 695) || (m >= 775 && m <= 905);
+  const { weekday, minute } = beijingClock(now);
+  if (!weekday) return false;
+  return (minute >= 555 && minute <= 695) || (minute >= 775 && minute <= 905);
 }
 
 function schedule(cfg) {
@@ -672,12 +905,16 @@ async function refresh() {
   try {
     const quotes = await fetchQuotes(items);
     if (!quotes.size) throw new Error("No quotes returned");
+    setOffline(false); // 拉到了数据就撤掉离线角标
     const charts = cfg.showChart ? await fetchTrends(items) : new Map();
     render(cfg, quotes, charts);
   } catch (err) {
     widget.log("quotes fetch failed", String(err));
     if (!listEl.querySelector(".row")) {
       listEl.innerHTML = emptyHTML(tx("quoteError"), tx("quoteErrorSub"), true);
+    } else {
+      // 之前已经渲染出行情：保留旧数据，但挂上离线角标，让用户知道这不是实时价
+      setOffline(true);
     }
   } finally {
     busy = false;
