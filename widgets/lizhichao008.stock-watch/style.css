@@ -10,6 +10,10 @@
   --mkt-sh: #e08a3c;
   --mkt-sz: #4d8bd6;
   --mkt-bj: #9170cf;
+  --mkt-idx: #17a79b; /* 指数：青绿，与三个交易所的橙 / 蓝 / 紫区分开 */
+  --mkt-hk: #d1567f; /* 港股：玫红 */
+  --mkt-us: #5f8ff0; /* 美股：蓝紫 */
+  --mkt-other: #8a94a6; /* 期货 / 外汇 / 债券 / 板块 / 基金 / 境外：中性灰 */
 }
 /* 浅色纸卡：亮红亮绿在米白底上对比不足，换成深一档 */
 html[data-theme="paper"] {
@@ -83,16 +87,19 @@ body {
   min-width: 0;
 }
 
-/* 沪 / 深 / 京 的半透明小标签，代替原来代码后面的 .SS / .SZ / .BJ。
-   字色 = 市场基色 + 主题前景色：深卡片自动成亮字，浅纸本自动成深字。 */
+/* 沪 / 深 / 京 / 指数 的半透明小标签，代替原来代码后面的 .SS / .SZ / .BJ。
+   字色 = 市场基色 + 主题前景色：深卡片自动成亮字，浅纸本自动成深字。
+   宽度固定成 2.15em：单字（沪）和双字（指数）、两字母（SH）和（IDX）都等宽，
+   这样代码列的起始位置在所有行里始终对齐。 */
 .mkt {
   flex: none;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 1.5em;
+  width: 2.15em;
+  min-width: 0;
   height: 1.5em;
-  padding: 0 4px;
+  padding: 0;
   border-radius: 4px;
   background: color-mix(in srgb, var(--mkt-c) 20%, transparent);
   color: color-mix(in srgb, var(--mkt-c) 55%, var(--w-fg));
@@ -104,6 +111,16 @@ body {
 .mkt-sh { --mkt-c: var(--mkt-sh); }
 .mkt-sz { --mkt-c: var(--mkt-sz); }
 .mkt-bj { --mkt-c: var(--mkt-bj); }
+.mkt-idx { --mkt-c: var(--mkt-idx); }
+.mkt-hk { --mkt-c: var(--mkt-hk); }
+.mkt-us { --mkt-c: var(--mkt-us); }
+.mkt-fut,
+.mkt-fx,
+.mkt-bond,
+.mkt-block,
+.mkt-fund,
+.mkt-otc { --mkt-c: var(--mkt-other); }
+.mkt-global { --mkt-c: var(--mkt-idx); }
 html[data-theme="paper"] .mkt {
   background: color-mix(in srgb, var(--mkt-c) 13%, transparent);
   color: color-mix(in srgb, var(--mkt-c) 80%, var(--w-fg));
@@ -215,7 +232,8 @@ html[data-theme="type"] .mkt {
 
 /* 行高不够时（股票多、或者卡片被压扁），由 JS 按每行实际高度给 body 打标记。
    normal ≥36px，compact ≥26，tiny ≥18，micro <18。
-   现在名称是主信息，所以矮行改成「名称 + 标签 + 代码」横向并排，不再把中文藏掉。 */
+   现在名称是主信息，所以矮行改成「名称 + 标签 + 代码」横向并排，不再把中文藏掉。
+   并排后任何一项都允许收缩：.id 内部裁掉溢出，不再盖到分时图上（250×140 最小卡片下的回归）。 */
 body[data-density="compact"] .id,
 body[data-density="tiny"] .id,
 body[data-density="micro"] .id {
@@ -223,12 +241,20 @@ body[data-density="micro"] .id {
   align-items: baseline;
   gap: 6px;
   max-width: none;
+  min-width: 0;
+  overflow: hidden;
 }
 /* 矮行把名称 + 标签 + 代码并成一行，左列要放宽；tiny/micro 本来就没有分时图 */
 body[data-density="compact"] .id { flex: 0 0 48%; width: 48%; }
 body[data-density="tiny"] .id,
 body[data-density="micro"] .id { flex: 1 1 auto; width: auto; }
+body[data-density="compact"] .meta { min-width: 0; overflow: hidden; flex: 0 1 auto; }
 body[data-density="compact"] .name { font-size: 0.96rem; }
+body[data-density="compact"] .code { min-width: 0; overflow: hidden; text-overflow: ellipsis; flex: 0 1 auto; }
+/* 卡片窄到连「名称 + 标签 + 代码」都放不下时，代码干脆不显示，只留名称和标签 */
+@container (max-width: 292px) {
+  body[data-density="compact"] .code { display: none; }
+}
 
 body[data-density="tiny"] .spark,
 body[data-density="micro"] .spark {
@@ -260,6 +286,32 @@ body[data-density="micro"] .row { padding: 0; gap: 6px; }
 /* ---------- 编辑：照内置「快捷启动」组件的做法 ---------- */
 /* 类选择器上的 display 会盖过浏览器默认的 [hidden]，所以显式声明 */
 [hidden] { display: none !important; }
+
+/* 离线角标：刷新失败但还显示着旧数据时，挂在卡片左上角（不挡右上角的编辑按钮） */
+.net {
+  position: absolute;
+  top: 5px;
+  left: 7px;
+  font-size: 0.6rem;
+  line-height: 1;
+  padding: 2px 5px;
+  border-radius: 4px;
+  color: var(--w-fg-faint);
+  background: color-mix(in srgb, var(--w-fg) 10%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--w-fg) 14%, transparent);
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* 输错代码（如 999999）：无行情也无缓存，名称换成「找不到这只股票」的弱化样式 */
+.row.is-missing .name {
+  font-weight: 500;
+  color: var(--w-fg-faint);
+}
+.row.is-missing .price,
+.row.is-missing .chg {
+  color: var(--w-fg-faint);
+}
 
 /* 一个按钮：平时在右上角，鼠标移到卡片上才淡入；编辑时变「完成」并移到右下角 */
 .edit {
