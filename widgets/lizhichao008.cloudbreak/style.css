@@ -1,0 +1,491 @@
+/* 天气 · 卡片 —— 外观全部跟随主题（颜色、圆角、内距、字体都由控制中心控制）
+ *
+ * 版式：定位行 / 第一行(状态+温度+最高最低 | 大图标) / 第二行(四项指标) / 第三行(一周)
+ * 小字下限 12px：0.857rem 就是 base.css 里 .w-label 的尺寸（主题 html 字号 14px）。
+ * 内层小卡圆角 8px：卡片本体圆角由窗口决定（毛玻璃态约 8px），与 base.css 的 .w-btn 一致。
+ */
+
+* { box-sizing: border-box; }
+
+/* 不要给 html 设 background：base.css 用「透明渐变」挡住 body 背景往画布上穿透，
+   一旦写成 transparent，body 的底色就会铺满整个窗口，圆角和投影全部失效。 */
+
+body {
+  margin: 0;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+}
+
+/* 容器查询挂在 .wx 上：量的是「扣掉主题内距后的可用区」，阈值直接就是可用尺寸。
+   注意容器查询匹配不到容器自己，所以布局属性都放在 .in 上。
+   这里不写 overflow:hidden —— 否则大图标的外发光会沿内容框被切出硬边；
+   溢出交给 body 的 overflow:hidden，切在卡片（padding box）边缘。 */
+.wx { position: relative; height: 100%; width: 100%; container-type: size;
+  /* 内层小卡圆角：不超过宿主卡片自身圆角（paper 是 4px，instrument 是 22px） */
+  --wx-r: min(8px, var(--w-radius, 8px)); }
+
+.in {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.7rem;
+}
+
+/* ── 定位行 ── */
+.top {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 0.28rem;
+  font-size: 0.9rem;
+  line-height: 1.35;
+  color: var(--w-fg-muted);
+  min-width: 0;
+}
+.top .pin { width: 1rem; height: 1rem; flex: none; opacity: 0.85; }
+.top .city {
+  color: var(--w-fg);
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 0 1 auto;
+}
+.top .sep { flex: none; opacity: 0.5; font-size: 0.85em; }
+.top .upd {
+  flex: none;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.9;
+}
+
+/* ── 第一行：左（状态 / 温度 / 最高最低）右（大图标） ── */
+.head {
+  flex: none;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-width: 0;
+}
+/* 右侧：图标在上，降水概率在底部，与左下的「最高 / 最低」同一行 */
+.hright {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.12rem;
+  min-width: 0;
+}
+.pop {
+  flex: none;
+  font-size: 0.857rem;
+  line-height: 1.25;
+  color: var(--w-fg-muted);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.pop b { font-weight: 600; color: var(--w-fg); }
+.pop.is-off { visibility: hidden; }
+.hleft {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.1rem;
+  min-width: 0;
+}
+.hmain {
+  display: flex;
+  align-items: baseline;
+  gap: 0.45rem;
+  min-width: 0;
+}
+.cond {
+  font-size: 1rem;
+  line-height: 1.2;
+  color: var(--w-fg-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tmp {
+  display: flex;
+  align-items: flex-start;
+  line-height: 0.92;
+  min-width: 0;
+}
+.tmp .num {
+  font-family: var(--w-font-display, var(--w-font-num, inherit));
+  font-size: 3rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  color: var(--w-fg);
+}
+.tmp .deg {
+  font-size: 0.95rem;
+  font-weight: 300;
+  color: var(--w-fg-muted);
+  margin: 0.3rem 0 0 0.12rem;
+}
+.hl {
+  display: flex;
+  gap: 0.8rem;
+  font-size: 0.857rem;
+  line-height: 1.25;
+  color: var(--w-fg-muted);
+  white-space: nowrap;
+}
+.hl b { font-weight: 600; font-variant-numeric: tabular-nums; }
+.hl i { font-style: normal; font-size: 0.8em; opacity: 0.75; }
+.hl-max b { color: var(--w-danger, #ff6b6b); }
+.hl-min b { color: #4aa9e8; }   /* 固定冷色：主题 accent 在 paper 里是朱红，语义会反 */
+
+/* 大图标：外圈柔光由 --glow（r,g,b）控制，随天气改色；光晕用 ::before，外发光用 drop-shadow */
+.heroWrap {
+  --glow: 120, 175, 255;
+  position: relative;
+  flex: none;
+  display: inline-flex;
+  isolation: isolate;
+}
+.heroWrap::before {
+  content: "";
+  position: absolute;
+  inset: -16%;
+  z-index: -1;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 50% 50%,
+    rgba(var(--glow), 0.3) 0%,
+    rgba(var(--glow), 0.11) 46%,
+    rgba(var(--glow), 0) 74%
+  );
+  filter: blur(6px);
+  pointer-events: none;
+}
+.hero {
+  width: 3.2rem;
+  height: 3.2rem;
+  flex: none;
+  display: block;
+  object-fit: contain;
+  filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.28))
+          drop-shadow(0 0 0.7rem rgba(var(--glow), 0.45));
+}
+
+/* ── 第二行：四项指标，撑满整宽 ── */
+.metrics {
+  flex: none;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.26rem;
+}
+.m {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.12rem;
+  padding: 0.3rem 0.15rem;
+  min-width: 0;
+  border-radius: var(--wx-r);
+  background: var(--w-control-bg);
+  border: 1px solid var(--w-border);
+}
+.m .v {
+  font-size: 1.05rem;
+  font-weight: 600;
+  line-height: 1.15;
+  color: var(--w-fg);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.m .v.lv-good { color: #47c98c; }
+.m .v.lv-ok { color: var(--w-warn, #ffc247); }
+.m .v.lv-mid { color: #ff9d4d; }
+.m .v.lv-bad { color: var(--w-danger, #ff6b5e); }
+/* 空气质量等级字（优 / 良 / 中 / 差）代替原来的小图标 */
+.m .lv {
+  font-size: 0.9rem;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--w-fg-muted);
+  font-variant-numeric: tabular-nums;
+}
+.m .lv.lv-good { color: #47c98c; }
+.m .lv.lv-ok { color: var(--w-warn, #ffc247); }
+.m .lv.lv-mid { color: #ff9d4d; }
+.m .lv.lv-bad { color: var(--w-danger, #ff6b5e); }
+.m .mi { width: 1.25rem; height: 1.25rem; flex: none; color: var(--w-fg-muted); opacity: 0.9; }
+.m .k {
+  font-size: 0.857rem;
+  line-height: 1.2;
+  color: var(--w-fg-muted);
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── 第三行：一周天气（吃掉剩余高度，柱形随之变长） ── */
+.week {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.16rem;
+}
+.day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
+  min-width: 0;
+  padding: 0.22rem 0;
+  border-radius: var(--wx-r);
+  line-height: 1.15;
+}
+.day.is-today .dn { color: var(--w-fg); font-weight: 600; }
+.day .dn {
+  font-size: 0.857rem;
+  color: var(--w-fg-muted);
+  white-space: nowrap;
+}
+.day .dn > i { font-style: normal; }
+.day .dn .sm { display: none; }
+.day img { width: 1.3rem; height: 1.3rem; object-fit: contain; }
+.day .dh {
+  font-size: 0.9rem;
+  color: var(--w-fg);
+  font-variant-numeric: tabular-nums;
+}
+.day .dl {
+  font-size: 0.857rem;
+  color: var(--w-fg-muted);
+  font-variant-numeric: tabular-nums;
+}
+.day .dh > i,
+.day .dl > i { font-style: normal; font-size: 0.82em; opacity: 0.7; }
+.day .bar {
+  width: 4px;
+  flex: 1 1 auto;
+  min-height: 0.9rem;
+  margin: 0.1rem 0;
+  border-radius: 99px;
+  background: color-mix(in srgb, var(--w-fg) 10%, transparent);
+  overflow: hidden;
+  position: relative;
+}
+.day .bar > i {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% - var(--b, 100%));   /* 温度越高越靠上 */
+  height: max(6px, calc(var(--b, 100%) - var(--a, 0%)));
+  border-radius: 99px;
+  background: linear-gradient(to top, #4aa9e8, var(--w-danger, #ff6b5e));
+}
+
+/* ── 中等宽度 ── */
+@container (max-width: 430px) {
+  .in { gap: 0.55rem; }
+  .tmp .num { font-size: 2.6rem; }
+  .hero { width: 2.6rem; height: 2.6rem; }
+  .cond { font-size: 0.95rem; }
+  .m { padding: 0.26rem 0.12rem; }
+  .m .v { font-size: 1rem; }
+  .day img { width: 1.15rem; height: 1.15rem; }
+}
+
+/* ── 矮卡片：整体压一档 ── */
+@container (max-height: 250px) {
+  .in { gap: 0.4rem; }
+  .top { font-size: 0.857rem; }
+  .top .pin { width: 0.9rem; height: 0.9rem; }
+  .cond { font-size: 0.9rem; }
+  .tmp .num { font-size: 2.3rem; }
+  .tmp .deg { font-size: 0.85rem; margin-top: 0.2rem; }
+  .hero { width: 2.3rem; height: 2.3rem; }
+  .m { padding: 0.16rem 0.1rem; gap: 0.08rem; }
+  .m .v { font-size: 0.95rem; }
+  .m .mi { width: 1.1rem; height: 1.1rem; }
+  .day { padding: 0.1rem 0; gap: 0.06rem; }
+
+}
+
+/* ── 很矮：状态与温度并排一行，尽量留住四项指标 ── */
+@container (max-height: 155px) {
+  .in { gap: 0.3rem; }
+  .hleft {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: baseline;
+    column-gap: 0.4rem;
+    row-gap: 0.06rem;
+  }
+  .tmp .num { font-size: 2.1rem; }
+  .hero { width: 2.4rem; height: 2.4rem; }
+  .m { padding: 0.12rem 0.08rem; gap: 0.04rem; }
+  .m .v { font-size: 0.9rem; }
+  .m .mi { width: 0.95rem; height: 0.95rem; }
+}
+
+/* ── 更矮：先去掉一周 ── */
+@container (max-height: 196px) {
+  .week { display: none; }
+}
+
+/* ── 竖长卡片：柱子跟着长高，稍微加宽才不像细线 ── */
+@container (min-height: 300px) {
+  .day .bar { width: 6px; margin: 0.18rem 0; }
+}
+
+/* ── 极窄：一周改用简称（1 个字） ── */
+@container (max-width: 250px) {
+  .day .dn .lg { display: none; }
+  .day .dn .sm { display: inline; }
+}
+
+/* ── 极小 / 极矮：只留 定位 / 状态+温度 / 最高最低 / 图标 ── */
+@container (max-width: 210px) or (max-height: 118px) {
+  .metrics { display: none; }
+  .week { display: none; }
+  .pop { display: none; }   /* 极窄时横向放不下「降水概率」，直接收起，避免和最高最低打架 */
+  .in { gap: 0.24rem; justify-content: center; }
+  .head { gap: 0.35rem; }
+  .cond { font-size: 0.857rem; }
+  .tmp .num { font-size: 2.1rem; }
+  .tmp .deg { font-size: 0.75rem; margin-top: 0.1rem; }
+  .hero { width: 2.3rem; height: 2.3rem; filter: drop-shadow(0 0 0.45rem rgba(var(--glow), 0.4)); }
+  .hl { gap: 0.6rem; }
+}
+
+/* 内距用主题的 --w-padding；只有小到放不下时才收 */
+@media (max-width: 220px), (max-height: 130px) {
+  body { padding: 10px 11px !important; }
+}
+
+/* ── 切换城市面板：盖满内容区，自带不透明底色（实机 WebView 不一定支持 backdrop-filter，
+   靠 --w-control-bg 那种 6% 白透会在卡片上变成全透明，所以这里颜色全部写死） ── */
+.picker {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.45rem;
+  border-radius: 8px;
+  /* 底色：--w-bg-solid 兜底不透明，再叠一层 --w-bg 跟主题走（type 主题的 --w-bg 是透明的） */
+  background-color: var(--w-bg-solid, rgb(18, 21, 27));
+  background-image: linear-gradient(var(--w-bg, transparent), var(--w-bg, transparent));
+  border: 1px solid color-mix(in srgb, var(--w-fg) 14%, transparent);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.42);
+  color: var(--w-fg);
+}
+.picker[hidden] { display: none; }
+.pbar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  height: 1.9rem;
+  padding: 0 0.45rem;
+  border-radius: calc(var(--wx-r) - 1px);
+  background: color-mix(in srgb, var(--w-fg) 9%, transparent);
+  border: 1px solid color-mix(in srgb, var(--w-fg) 12%, transparent);
+}
+.pico { width: 0.95rem; height: 0.95rem; flex: none; color: var(--w-fg-muted); }
+#pq {
+  flex: 1 1 auto;
+  min-width: 0;
+  background: transparent;
+  border: 0;
+  outline: 0;
+  color: var(--w-fg);
+  font: inherit;
+  font-size: 0.9rem;
+  padding: 0;
+}
+#pq::placeholder { color: color-mix(in srgb, var(--w-fg) 45%, transparent); }
+.pclose {
+  flex: none;
+  background: transparent;
+  border: 0;
+  padding: 0 0.15rem;
+  color: color-mix(in srgb, var(--w-fg) 60%, transparent);
+  font-size: 0.85rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.pclose:hover { color: var(--w-fg); }
+.plist {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding-right: 0.05rem;
+}
+.plist::-webkit-scrollbar { width: 5px; }
+.plist::-webkit-scrollbar-track { background: transparent; }
+.plist::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--w-fg) 24%, transparent); border-radius: 99px; }
+.prow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.3rem 0.45rem;
+  border: 0;
+  border-radius: calc(var(--wx-r) - 2px);
+  background: transparent;
+  color: var(--w-fg);
+  font: inherit;
+  font-size: 0.9rem;
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.prow .nm { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.prow .ad {
+  flex: 0 1 auto;
+  min-width: 0;
+  font-size: 0.857rem;
+  color: var(--w-fg-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.prow:hover { background: color-mix(in srgb, var(--w-fg) 9%, transparent); }
+.prow.on { background: color-mix(in srgb, var(--w-accent) 26%, transparent); }
+.pempty { padding: 0.4rem; font-size: 0.857rem; color: var(--w-fg-muted); }
+
+/* ── 主题微调：宿主把主题 id 写在 <html data-theme="…">，可以按主题单独收拾 ── */
+
+/* paper：米白纸 + 衬线字，字号跟主题走（衬线粗体太重），光晕也要收一档，否则像一团烟 */
+html[data-theme="paper"] .tmp .num {
+  font-weight: var(--w-display-weight, 400);
+  letter-spacing: var(--w-display-tracking, -0.01em);
+}
+html[data-theme="paper"] .heroWrap::before { display: none; }   /* 纸面不需要光晕，留投影就够 */
+html[data-theme="paper"] .hero {
+  filter: drop-shadow(0 3px 7px rgba(31, 28, 24, 0.18)) drop-shadow(0 0 0.5rem rgba(var(--glow), 0.3));
+}
+
+/* type：主题本身是「超大细体数字浮在壁纸上」，别用 700 顶掉它的 200 */
+html[data-theme="type"] .tmp .num {
+  font-weight: var(--w-display-weight, 200);
+  letter-spacing: var(--w-display-tracking, -0.035em);
+}
+html[data-theme="type"] .top .city,
+html[data-theme="type"] .m .v,
+html[data-theme="type"] .hl b { font-weight: 500; }
+html[data-theme="type"] .m { background: color-mix(in srgb, var(--w-fg) 8%, transparent); }
