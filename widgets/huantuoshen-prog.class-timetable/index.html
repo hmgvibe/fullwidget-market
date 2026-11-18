@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <title>我的课表</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main id="card">
+  <section id="upcoming" aria-label="实时课程提醒" hidden>
+    <div class="heading-row">
+      <h1 id="next-heading">下节课</h1>
+      <button id="sound-menu" popovertarget="sound-tools" title="课表和铃声设置" aria-label="课表和铃声设置">⚙</button>
+    </div>
+    <div id="next-name" class="name"></div>
+    <div id="next-time"></div>
+    <div id="next-room" class="details" hidden></div>
+    <div id="active-class" hidden></div>
+    <div id="live-summary" hidden></div>
+  </section>
+  <section id="empty-schedule" hidden>
+    <h1>还没有课表</h1>
+    <button id="import-first">导入课表</button>
+    <span id="empty-import-status" role="status"></span>
+  </section>
+  <nav class="calendar" aria-label="教学周和日期">
+    <div class="week-nav">
+      <button id="prev" title="上一周" aria-label="上一周">‹</button>
+      <span id="week"></span>
+      <button id="today" title="回到今天" aria-label="回到今天" hidden>↩</button>
+      <button id="next" title="下一周" aria-label="下一周">›</button>
+    </div>
+    <div id="days" role="group" aria-label="选择日期"></div>
+  </nav>
+  <section id="lessons" aria-label="按天查看课程"></section>
+  <footer>
+    <span id="status" role="status">正在载入课表…</span>
+  </footer>
+    <div id="sound-tools" popover aria-label="课表和铃声设置">
+      <button id="import-schedule">更换课表…</button>
+      <span id="import-status" role="status"></span>
+      <button id="test">试听铃声</button>
+      <button id="choose" title="MP3、WAV 或 OGG，最多 1 MB">更换铃声</button>
+      <button id="reset" hidden>恢复默认铃声</button>
+      <input id="file" type="file" accept=".mp3,.wav,.ogg" hidden>
+    </div>
+    <input id="schedule-file" type="file" hidden>
+  </main>
+  <script src="schedule.js"></script>
+  <script src="vendor/ical.min.js"></script>
+  <script src="vendor/xlsx.min.js"></script>
+  <script src="vendor/papaparse.min.js"></script>
+  <script src="import.js"></script>
+  <script src="main.js"></script>
+</body>
+</html>
