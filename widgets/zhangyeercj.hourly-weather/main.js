@@ -192,7 +192,9 @@ function draw() {
   const yTop = topPad;
   const yBottom = Math.max(yTop + 10, H - bottom);
   const step = (W - padX * 2) / (n - 1);
-  geo = { padX, step };
+  // width 记下绘制用的逻辑宽度：窗口缩放（body 的 zoom）时，鼠标坐标和这里的单位不是一个尺度，
+  // 命中计算必须先按比例换回逻辑坐标，否则会点 10 时命中 20 时。
+  geo = { padX, step, width: W };
 
   const temps = points.map((p) => p.temp);
   let lo = Math.min(...temps);
@@ -360,9 +362,12 @@ $("rf").onclick = async () => {
 
 const chart = $("chart");
 chart.addEventListener("pointermove", (e) => {
-  if (!points.length || !geo.step) return;
+  if (!points.length || !geo.step || !geo.width) return;
   const box = chart.getBoundingClientRect();
-  const i = Math.round((e.clientX - box.left - geo.padX) / geo.step);
+  if (!box.width) return;
+  // 先把鼠标的相对位置（0..1）换回绘制时的逻辑坐标，再做命中，缩放不影响。
+  const xLayout = ((e.clientX - box.left) / box.width) * geo.width;
+  const i = Math.round((xLayout - geo.padX) / geo.step);
   if (i !== selected) select(i);
 });
 chart.addEventListener("pointerleave", () => select(0));
