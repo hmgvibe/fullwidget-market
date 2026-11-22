@@ -1,0 +1,26 @@
+{
+  "id": "alanblxc.grouped-launcher",
+  "name": { "zh-TW": "分組啟動台", "zh-CN": "分组启动台", "en": "Grouped launcher" },
+  "description": {
+    "zh-TW": "用多個分組標籤頁整理程式、資料夾和網址，單層或多層標籤皆可，拖曳即可排序與換組。",
+    "zh-CN": "用多个分组标签页整理程序、文件夹和网址，单层或多层标签皆可，拖拽即可排序与换组。",
+    "en": "Programs, folders and links kept in tabbed groups — one row of tabs or several. Drag to reorder and to move things between groups."
+  },
+  "version": "2.0.1",
+  "author": "Alanblxc",
+  "entry": "index.html",
+  "icon": "icon.svg",
+  "category": "productivity",
+  "preview": "preview.png",
+  "size": { "width": 360, "height": 440, "minWidth": 240, "minHeight": 220, "maxWidth": 1200, "maxHeight": 1000, "grow": 1 },
+  "permissions": ["shell.launch", "shell.open"],
+  "settings": [
+    { "key": "title", "type": "text", "label": { "zh-TW": "標題", "zh-CN": "标题", "en": "Title" }, "default": "分组启动台" },
+    { "key": "showTitle", "type": "toggle", "label": { "zh-TW": "顯示標題", "zh-CN": "显示标题", "en": "Show the title" }, "default": true },
+    { "key": "showAll", "type": "toggle", "label": { "zh-TW": "顯示「全部」標籤", "zh-CN": "显示“全部”标签", "en": "Show the All tab" }, "default": true },
+    { "key": "multiRow", "type": "toggle", "label": { "zh-TW": "多層分組標籤（關閉為單層，開啟後溢出自動向下排列）", "zh-CN": "多层分组标签（关闭为单层，开启后溢出自动向下排列）", "en": "Several rows of tabs (off: one row, scrolls sideways)" }, "default": false },
+    { "key": "compactTabs", "type": "toggle", "label": { "zh-TW": "緊湊標籤欄（縮小間距與留白，容納更多分組）", "zh-CN": "紧凑标签栏（缩小间距与留白，容纳更多分组）", "en": "Compact tab bar" }, "default": false },
+    { "key": "showIcons", "type": "toggle", "label": { "zh-TW": "顯示捷徑圖標", "zh-CN": "显示快捷方式图标", "en": "Show icons" }, "default": true },
+    { "key": "defaultGrid", "type": "toggle", "label": { "zh-TW": "預設使用圖標網格（關閉為清單）", "zh-CN": "默认使用图标网格（关闭为列表）", "en": "Icon grid by default (off: list)" }, "default": true }
+  ]
+}
