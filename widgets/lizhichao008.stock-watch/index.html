@@ -8,6 +8,9 @@
   <!-- 下面的中文是简中兜底文案；main.js 启动时会按 widget.locale 覆盖成 zh-TW / zh-CN / en -->
   <div class="list" id="list"></div>
 
+  <!-- 刷新失败但还有上一次数据时，左上角的小角标；正常拉到数据就隐藏 -->
+  <div class="net" id="netBadge" hidden data-no-drag>离线</div>
+
   <div class="adder" id="adder" hidden data-no-drag>
     <button class="w-btn" id="addBtn" data-no-drag>＋ 新增股票</button>
     <span class="adder-hint">按住拖动排序 · 点 − 移除</span>

@@ -1,60 +1,179 @@
-# Stock Watchlist / 自選股 / 自选股
+# 自选股
 
-A FullWidget desktop widget for China A-share quotes and intraday charts.
-Interface and settings are available in 繁體中文, 简体中文 and English.
+FullWidget 桌面组件：自选股实时行情 + 分时走势，支持按代码 / 简称 / 拼音首字母搜索添加，
+卡片上可直接增删、按住拖动排序。除了个股，也能放**指数**（上证指数、深证成指、创业板指等）。
 
-## What it does
+## v1.11.0：上架反馈修复
 
-- Shows a watchlist of up to 12 A-shares: Chinese short name, exchange badge,
-  6-digit code, intraday sparkline, last price and change / change %.
-- Follows A-share convention: **red = up, green = down**.
-- Refreshes at the chosen interval during trading hours and slows to 5 minutes
-  outside trading hours.
-- Search by code, Chinese name or pinyin initials (`600519`, `茅台`, `GZMT`)
-  from the widget or from Control Center. Click a result to add / remove it.
-- Hover the card to reveal `Edit`; remove rows with the outlined minus button,
-  drag rows to reorder, or use `+ Add stock` to open the search panel.
-- Clicking a row opens the Eastmoney quote page in the default browser
-  (can be disabled in settings).
+1. **最小卡片不再重叠**（250×140，compact 排版）：名称 / 标签 / 代码并排一行时全部允许收缩，
+   `.id` 内部裁掉溢出，代码列不再盖到分时图上；卡片窄于 292px 时干脆隐藏代码，只留名称和标签。
+2. **交易时段按北京时间判断**：`Intl.DateTimeFormat` 取 `Asia/Shanghai` 的星期和时分，
+   海外用户的电脑时区不再影响刷新频率；环境不支持时区表时退回本地时间。
+3. **离线角标**：行情刷新失败但画面上还有上一次数据时，左上角出现「离线」小角标，
+   拉到新数据自动消失；一行都没有时仍然显示完整的错误页。
+4. **输错代码有提示**：无行情也无缓存的行（如 `999999.SS`）名称显示「找不到这只股票」并弱化，
+   悬停提示「查无行情：代码可能输错，或该品种暂无数据」。
 
-## Themes
-
-All colours come from FullWidget's `--w-*` variables; the card never paints its
-own background, so it follows the global theme, accent colour, opacity, radius
-and font. Verified in `instrument`, `type` and `paper`, and at the minimum card
-size. Nine preview images under `preview/` cover three themes × three languages.
-
-## Data source and privacy
-
-Quotes, intraday series and symbol search come from Eastmoney's public JSON
-endpoints through `widget.fetch`:
-
-| Endpoint | Used for |
+| 文件 | 用途 |
 |---|---|
-| `push2his.eastmoney.com/api/qt/stock/get` | last price, change, prev close |
-| `push2his.eastmoney.com/api/qt/stock/trends2/get` | intraday series |
-| `searchapi.eastmoney.com/api/suggest/get` | code / name / pinyin search |
+| `widget.json` | 名称、尺寸、权限、设置项 |
+| `index.html`、`style.css`、`main.js` | 组件本身 |
+| `icon.svg` | 在组件库和菜单里的图标 |
 
-Only the ticker codes in your watchlist and the keyword you type are sent to
-those hosts. There is no account, no telemetry and no analytics. Search results
-are cached locally through `widget.storage` (max 800 entries) so they still work
-offline. All settings stay in FullWidget.
+## 每一行的组合样式（v1.8.0）
 
-## Permissions
+左侧信息区按参考图重做：
 
-| Permission | Why |
+- **中文简称是主标题**（加粗、主色、最醒目），不再是代码下面的小灰字。
+- 第二行是**市场标签 + 6 位代码**：`沪`（橙 · 上证 / `.SS`）、`深`（蓝 · 深证 / `.SZ`）、
+  `京`（紫 · 北交所 / `.BJ`），鼠标停上去有全称提示。
+  标签是**半透明底色 + 由主题派生的字色 + 细描边**：深色卡片上是亮字、纸本浅底上自动变深字、
+  无卡片主题靠描边维持边界，不用给每套主题单独写一套色板。
+- **代码不显示 `.SS` / `.SZ` / `.BJ` 后缀**；后缀仍保存在设置里，只是画面上不出现。
+- 去掉了原来的涨跌小三角，涨跌继续由价格、涨跌额和分时线的红绿表示。
+- **每行分时走势图完全等宽、左右边界对齐，并撑满中间**：列宽按所有行里最长的一段文本量出来，
+  图形左右各距最长文本 8px，不会因名称长短或价格位数不同而参差，也不会留一大片空白。
+- 搜索候选也用同样的标签 + 6 位代码。
+- 卡片压扁或股票变多时，名称、标签、代码会自动并成一行，中文始终保留。
+
+## 品种不限制：个股 / 指数 / 基金 / 港美 / 期货 / 外汇（v1.10.0）
+
+搜索**不再按品种过滤**，东财联想接口能返回的都能加进来，每行用标签区分：
+
+| 标签 | 品种 | 举例 | 有行情 |
+|---|---|---|---|
+| `沪` `深` `京` | A 股（含 ETF / LOF，按交易所标） | `600519`、`002242`、`510300` | ✅ 报价 + 分时 |
+| `指数` | A 股指数 | 上证指数 `000001`、深证成指 `399001` | ✅ |
+| `港` | 港股（含港股衍生品、港期） | 腾讯控股 `116.00700` | ✅ 正股 / 衍生品看品种 |
+| `美` | 美股、美股 OTC | 苹果 `105.AAPL` | ✅ |
+| `全球` | 全球指数 | 道琼斯 `100.DJIA`、美元指数 `100.UDI` | ✅ |
+| `板` | 行业 / 概念板块 | 银行Ⅱ `90.BK0475` | ✅ |
+| `汇` | 外汇 | 欧元兑美元 `119.EURUSD` | ✅ |
+| `债` | 债券 | `0.xxxxxx` | 视券种 |
+| `期` | 期货 / 期权 | 螺纹钢 `113.rb2611` | 休市或该合约无数据时显示 `—` |
+| `基` | 场外基金 | `150.000001` | ✅ 净值 |
+| `外` | 伦交所 / 德交所 / 上金所等 | `155.13RI` | 视品种 |
+
+- **取不到行情的品种不会报错**：行还在，名称从搜索缓存里取，价格 / 涨跌显示 `—`。
+- 指数仍靠代码段识别（沪 `000xxx`、深 `399xxx`、北 `899xxx`）；其它市场直接写东财 secid，
+  例如 `116.00700`、`105.AAPL`、`90.BK0475`，设置里照样一行一只。
+- 搜索排序加了**品种优先级**：A 股 / 指数 / 基金 / 港股 / 美股 / 债券 / 板块 在前，
+  期货、场外、港股衍生品排后面，避免搜「美元」时被几十条窝轮淹没。
+
+## 卡片上直接增删与排序（v1.8.0）
+
+照内置「快捷启动」组件的交互做的，卡片上不再有常驻按钮：
+
+1. **鼠标移到卡片上**，右上角淡入一个 `编辑` 按钮（平时完全不显示）。
+2. 点它进入编辑态，每行沿用上面的组合样式：
+   - 按钮变成 `完成`，并移到底部右侧；
+   - 底部出现 `＋ 新增股票`；
+   - 每一行**最前面**（股票名称之前）出现**线性描边的红色减号**，点一下即删除该股票；
+   - 编辑态 **hover 高亮铺满整行**（鼠标在行两端也生效），拖拽时被拖行的高亮 / 描边同样是整行范围；
+     行内容用 padding 左右各留 8px，减号和价格不贴边；
+   - **按住任意一行上下拖动**即可调整顺序：被拖行高亮描边并轻微放大、其余行变淡、
+     插入位置出现一条高亮指示线、底部提示变成「松手完成排序」；松手后按新顺序写回控制中心。
+3. 点 `＋ 新增股票` 会打开原来的搜索面板，
+   输入关键词、点候选行即可加入 / 移出；按 `✕` 或 `Esc` 返回编辑态。
+4. 点 `完成`（或按 `Esc`）回到正常行情视图。
+
+编辑态下分时图会临时隐藏，行带 `data-no-drag` 以免拖动排序时把整个组件窗口拖走；点行不会误打开浏览器。
+
+## 搜索并添加股票（不用记代码）
+
+两个入口，搜索面板是同一个：
+
+1. **卡片上**：`编辑` → `＋ 新增股票`。
+2. **控制中心**：「我的组件 → 自选股 → 内容 → 搜索并添加股票」里输入关键词，
+   桌面上会自动弹出候选列表，点一下就加进去（这个入口不需要先进入编辑态）。
+
+关键词可以是任意一种：
+
+| 输入 | 能找到 |
 |---|---|
-| `network:push2his.eastmoney.com` | quotes and intraday charts |
-| `network:searchapi.eastmoney.com` | symbol lookup while adding stocks |
-| `shell.open` | open a stock's quote page in the browser on click (optional setting) |
+| `600519`、`0022` | 代码精确 / 前缀 |
+| `茅台`、`九阳` | 中文简称包含 |
+| `GZMT`、`JYGF`、`jy`、`zgpa` | 拼音首字母，大小写都行 |
+| `600519.SS`、`600519.SH`、`sh600519` | 带市场和后缀的完整代码 |
+| `上证指数`、`000001.SH`、`399001` | 指数 |
+| `腾讯控股`、`116.00700` | 港股 |
+| `AAPL`、`苹果`、`105.AAPL` | 美股 |
+| `510300`、`150.000001` | 场内 ETF / 场外基金 |
 
-## Disclaimer
+- 结果不再限制品种（A 股、指数、基金、港美、期货、外汇、债券、板块都能搜到），
+  按「精确 > 前缀 > 包含」+ 品种优先级排序；已添加的行显示 `✓ 已添加`，再点一次即移除。
+- 粘完整代码（`000001.SH` / `sh000001` / `1.000001` / `116.00700`）也能搜：
+  会先剥成代码本体再查（东财联想接口对带后缀的串直接返回 0 条），并只保留你指定市场的结果。
+- `Enter` 添加第一条；`Esc` 关闭搜索面板，不在搜索面板时则退出编辑态。
+- 中文输入法选字、连续打字都有防抖，不会每敲一个字就发一次请求。
+- 搜过的股票会缓存进 `widget.storage`（最多 800 条），断网时也能查到历史结果。
 
-Market data is provided by a third party, may be delayed or inaccurate, and is
-for reference only — not investment advice. This widget is not affiliated with
-or endorsed by Eastmoney.
+## 其它设置
 
-## Development
+- **自选股**：一行一只，最多 12 只。写法都行：`002242.SZ`、`600989.SS`、`sh600519`、`sz000001`、`600519`。
+  指数同样写在这里：`000001.SS`（上证指数）、`399001.SZ`（深证成指）、`000300.SS`（沪深300）。
+  搜索添加的结果会自动写回这里，控制中心的表单也会同步更新。
+- **刷新频率**：15 秒 / 30 秒 / 1 分钟 / 5 分钟。非交易时段自动降到 5 分钟一次。
+- **显示分时走势**：关掉就只剩代码、名称和价格。
+- **右侧数值**：涨跌额或涨跌幅。
+- **点击打开行情页**：单击某一行，用浏览器打开东方财富个股页。
 
-No build step, no dependencies, no remote code. Files are plain HTML/CSS/JS and
-can be edited directly; developer mode hot-reloads on save.
+## 实现说明
+
+- 行情：`push2his.eastmoney.com/api/qt/stock/get`（逐只报价）+ `/trends2/get`（分时）。
+  东财的批量接口 `ulist.np/get` 在 .NET 的 HttpClient 下会被服务端断连，所以改用单只并发。
+- 搜索：`searchapi.eastmoney.com/api/suggest/get?type=14`，服务端自带拼音首字母，
+  返回 `QuoteID`（即 `0.002242` / `1.600519` / `116.00700`）直接当 secid 用，不用自己猜交易所。
+  **不按 `Classify` 过滤**，只把 `QuoteID` 能解析成 secid 的都收下；`Classify` 存进
+  `widget.storage` 的搜索缓存，用来决定标签（`CLASS_TAG`），缓存没有就按市场编号兜底（`MARKET_TAG`）。
+  查询词先经 `parseQuery()` 归一化，并记下用户写的市场用于收窄结果。
+- 因此 `widget.json` 声明了 `network:push2his.eastmoney.com`、`network:searchapi.eastmoney.com`
+  和 `shell.open` 三个权限。数据仅供参考，不构成投资建议。
+- 编辑态沿用内置 launcher 的结构：`body.editing` class + 一个 `.edit` 按钮切换「编辑 / 完成」+ `.adder`
+  + 每行最前面的线性 `.minus`（透明底 + 红色描边）。
+  删除和拖拽排序都走 `writeStocks()` → `widget.settings.set("stocks", …)`
+  （`suppressChange` 防止触发自己的 onChange 形成循环）。
+  排序用 pointerdown/move/up：位移超过 5px 才进入拖拽，`insertBefore` 实时移动 DOM；
+  同时打上 `body.dragging` / `.is-dragging` / `.drop-before|drop-after` 并临时改写底部提示，
+  松手后按 DOM 顺序写回设置；编辑态的行带 `data-no-drag`，交给组件自己处理而不是移动窗口。
+  `render()` 缓存 `lastRender`，切换编辑态直接重绘，不必重新联网。
+- 分时图撑满靠 `alignColumns()`：渲染后给 `.list` 临时加 `.measuring`（`width:max-content !important`），
+  量出所有行里最宽的 `.id` / `.px`，写成 `--col-id` / `--col-px` 两个 CSS 变量；
+  `.id` / `.px` 用 `flex: 0 0 var(--col-…)`、`.spark` 用 `flex: 1 1 0`，配合 `.row { gap: 8px }`
+  就是「等宽 + 左右各 8px + 尽量撑满」。`ResizeObserver` 里也要重算（卡片缩放后列宽会变）。
+  measuring 规则必须放在 CSS 末尾且用 `!important`，否则压不过 density / 编辑态 / @container 的覆盖。
+- 编辑态 hover / 拖拽高亮都直接画在 `.row` 上（`margin: 0` + `background: var(--w-hover)`），
+  范围铺满整行；内容用 `.row { padding: 0 8px }` 左右留间距（黄色）。
+  拖拽描边 `outline-offset: -2px`、插入指示线 `left/right: 0`，范围与 hover 一致；
+  极矮卡片下 padding 收到 6px。**不要**给 `.row` 加 margin，也不要用内层高亮块，
+  两者都会让高亮范围小于行容器。
+- 涨红跌绿（A 股习惯）；亮度由 `--w-fg` 派生，纸本浅底换成更深的红绿，无卡片的 type 主题再提亮。
+- 卡片背景、文字、强调色、字体、圆角、内距全部走 `--w-*` 变量，组件**不写死任何卡片底色**；
+  卡片压扁或股票变多时按行高自动收敛排版。详见下一节。
+
+## 主题跟随（v1.8.0）
+
+FullWidget 的全局外观在 `config.json` 的 `theme` 里；每个桌面实例还有一份
+`appearance`，**只要写了某个键就会覆盖全局**。之前这个组件被单独设了
+`"backgroundOpacity": 1`，于是全局的毛玻璃 33% 黑被盖成纯黑实心卡片，
+看起来和旁边所有组件都不一样。已把实例级覆盖清空为 `{}`，改为完全继承全局。
+
+组件代码这边的约束：
+
+- `body` 的背景、圆角、内距、字体、阴影一律交给平台按主题注入，组件不覆盖 `body` 背景。
+- 涨跌红绿是 A 股语义色，但用 `color-mix(..., var(--w-fg))` 派生亮度；
+  `html[data-theme="paper"]` 压深、`html[data-theme="type"]` 提亮。
+- 市场标签只留三个基色（`--mkt-sh/sz/bj`），底色是 `color-mix(基色 20%, transparent)`、
+  字色是 `color-mix(基色, var(--w-fg))`、描边同法，深浅主题自动适配。
+- 减号描边 / hover、拖拽描边与插入线、主按钮全部用 `--w-danger` / `--w-accent` /
+  `--w-hover` / `--w-shadow`，用户改强调色时会一起变（当前桌面是 `#24fbff` 青色）。
+- 预览 `preview-stock/build.js` 里的内联变量刻意对齐当前桌面全局外观，
+  并生成 `preview-paper.html` / `preview-type.html` 两个主题变体，
+  截图前先切一遍三套主题，避免只在深色主题下好看。
+
+> 改 `config.json` 后，运行中的 FullWidget 需要重新读取配置才会反映到桌面：
+> 重启应用，或在控制中心「我的组件 → 自选股 → 外观 → 背景不透明度」点一次「重设」。
+> 组件代码本身的改动会在保存时热重载，不需要重启。
+
+开发者模式下，改完保存，桌面上的组件就会自动重新加载；按 F12 打开开发者工具。
+完整说明：控制中心 → 设置 → 开发文档。
