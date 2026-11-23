@@ -37,23 +37,23 @@ const I18N = {
   mktOtcTitle:   { "zh-TW": "境外 / 其它市場", "zh-CN": "境外 / 其它市场", en: "Overseas / other market" },
   searchPh:      { "zh-TW": "代碼 / 簡稱 / 拼音首字母", "zh-CN": "代码 / 简称 / 拼音首字母", en: "Code / name / initials" },
   backTitle:     { "zh-TW": "返回 (Esc)", "zh-CN": "返回 (Esc)", en: "Back (Esc)" },
-  noMatch:       { "zh-TW": "找不到符合的 A 股", "zh-CN": "没有找到匹配的 A 股", en: "No matching A-shares" },
+  noMatch:       { "zh-TW": "找不到符合的證券或品種", "zh-CN": "没有找到匹配的证券或品种", en: "No matching instruments" },
   added:         { "zh-TW": "✓ 已加入", "zh-CN": "✓ 已添加", en: "✓ Added" },
   toAdd:         { "zh-TW": "＋ 加入", "zh-CN": "＋ 添加", en: "+ Add" },
   searching:     { "zh-TW": "搜尋中…", "zh-CN": "正在搜索…", en: "Searching…" },
   localResults:  { "zh-TW": "本機快取結果", "zh-CN": "本地缓存结果", en: "Cached results" },
   resultFoot:    { "zh-TW": "共 {n} 條{scroll} · 點擊加入 / 移除 · Esc 返回", "zh-CN": "共 {n} 条{scroll} · 点击添加 / 移除 · Esc 返回", en: "{n} result(s){scroll} · click to add / remove · Esc to go back" },
   scrollHint:    { "zh-TW": " · 可捲動", "zh-CN": " · 可滚动", en: " · scroll" },
-  tryAgain:      { "zh-TW": "試試代碼、簡稱或拼音首字母", "zh-CN": "试试代码、简称或拼音首字母", en: "Try a code, name or initials" },
+  tryAgain:      { "zh-TW": "試試代碼、簡稱或拼音首字母，例如 AAPL、騰訊", "zh-CN": "试试代码、简称或拼音首字母，例如 AAPL、腾讯", en: "Try a code, name or initials (e.g. AAPL)" },
   searchError:   { "zh-TW": "搜尋失敗，請檢查網路或權限", "zh-CN": "搜索失败，请检查网络或权限", en: "Search failed — check network or permissions" },
   offline:       { "zh-TW": "離線結果（網路不可用）", "zh-CN": "离线结果（网络不可用）", en: "Offline results" },
   emptyQuery:    { "zh-TW": "輸入代碼 / 簡稱 / 拼音首字母", "zh-CN": "输入代码 / 简称 / 拼音首字母", en: "Enter a code, name or initials" },
-  example:       { "zh-TW": "例如 600519、茅台、GZMT", "zh-CN": "例如 600519、茅台、GZMT", en: "e.g. 600519 or GZMT" },
+  example:       { "zh-TW": "例如 600519、茅台、GZMT、AAPL", "zh-CN": "例如 600519、茅台、GZMT、AAPL", en: "e.g. 600519, GZMT or AAPL" },
   limitReached:  { "zh-TW": "最多 {n} 隻，請先移除一隻", "zh-CN": "最多 {n} 只，请先移除一只", en: "Up to {n} stocks — remove one first" },
   noStocks:      { "zh-TW": "還沒有自選股", "zh-CN": "还没有自选股", en: "No stocks yet" },
-  noStocksSub:   { "zh-TW": "點「編輯」→「＋ 新增股票」，或在控制中心搜尋", "zh-CN": "点「编辑」→「＋ 新增股票」，或在控制中心搜索", en: "Click Edit → + Add stock, or search in Control Center" },
+  noStocksSub:   { "zh-TW": "點「編輯」→「＋ 新增股票」\n也可以在控制中心搜尋", "zh-CN": "点「编辑」→「＋ 新增股票」\n也可以在控制中心搜索", en: "Click Edit → + Add stock\nor search from Control Center" },
   quoteError:    { "zh-TW": "行情取得失敗", "zh-CN": "行情获取失败", en: "Couldn't load quotes" },
-  quoteErrorSub: { "zh-TW": "檢查網路，或允許元件存取東方財富", "zh-CN": "检查网络，或允许组件访问东方财富", en: "Check the network, or allow access to Eastmoney" },
+  quoteErrorSub: { "zh-TW": "檢查網路\n或允許元件存取東方財富", "zh-CN": "检查网络\n或允许组件访问东方财富", en: "Check the network\nor allow access to Eastmoney" },
   netOffline:    { "zh-TW": "離線", "zh-CN": "离线", en: "offline" },
   netOfflineTitle:{ "zh-TW": "行情刷新失敗，顯示的是上一次的數據", "zh-CN": "行情刷新失败，显示的是上一次的数据", en: "Refresh failed — showing last data" },
   notFound:      { "zh-TW": "找不到這隻股票", "zh-CN": "找不到这只股票", en: "Not found" },
@@ -68,7 +68,7 @@ const tx = (key, vars) => {
 
 // 自选股行情组件
 // 行情 / 搜索都来自东方财富的公开接口，由 widget.fetch 代发（不受 CORS 限制）。
-// 交易时段按设定的频率刷新，其余时间自动降到 5 分钟一次。
+// 交易时段按自选股所属市场分别判断，开盘用设定频率刷新，全部休市才降到 5 分钟一次。
 // 搜索支持代码、中文简称、拼音首字母，结果点一下即可写回「自选股」设置。
 
 const $ = (id) => document.getElementById(id);
@@ -307,14 +307,17 @@ async function fetchQuotes(list) {
         if (!r.ok) return;
         const json = await r.json();
         const d = json && json.data;
-        if (!d || !Number.isFinite(d.f43)) return;
+        // 盘前 / 休市时现价 f43 是字符串 "-"，但名称 f58 和昨收 f60 还在：
+        // 保留它们，价格显示 —，别把整行变成「光秃秃的代码」。
+        // 完全没有 data（无效代码）才算失败。
+        if (!d || (!d.f58 && !Number.isFinite(d.f60))) return;
         map.set(it.secid, {
-          name: d.f58,
+          name: d.f58 || "",
           digits: Number.isFinite(d.f59) ? d.f59 : 2,
-          price: d.f43,
-          prevClose: d.f60,
-          change: d.f169,
-          percent: d.f170,
+          price: Number.isFinite(d.f43) ? d.f43 : null,
+          prevClose: Number.isFinite(d.f60) ? d.f60 : null,
+          change: Number.isFinite(d.f169) ? d.f169 : null,
+          percent: Number.isFinite(d.f170) ? d.f170 : null,
         });
       } catch (err) {
         // 单只失败不影响其他
@@ -510,10 +513,34 @@ function render(cfg, quotes, charts) {
   alignColumns();
 }
 
+// 空状态的线性小图标：全部用 currentColor 描边，跟着 --w-fg / --w-danger 走，
+// 三套主题（含无卡片的 type）都不用单独配色；尺寸交给 CSS，方便小卡片里缩小或隐藏。
+const EMPTY_ICONS = {
+  // 空自选股：一张空列表 + 「＋」
+  list: `<svg class="e-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+    stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <rect x="3.2" y="4.5" width="17.6" height="15" rx="3"/>
+    <path d="M7 9.5h6M7 14.5h3.5" opacity=".7"/>
+    <path d="M16.5 13v4M14.5 15h4"/>
+  </svg>`,
+  // 出错：圆圈感叹号
+  alert: `<svg class="e-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+    stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <circle cx="12" cy="12" r="8.2"/>
+    <path d="M12 7.9v4.6M12 15.9v.1"/>
+  </svg>`,
+  // 搜索：放大镜
+  search: `<svg class="e-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+    stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <circle cx="10.8" cy="10.8" r="6"/>
+    <path d="M15.4 15.4 20 20"/>
+  </svg>`,
+};
+
 function emptyHTML(title, sub, isError) {
-  return `<div class="empty${isError ? " err" : ""}">${esc(title)}${
-    sub ? `<div class="sub">${esc(sub)}</div>` : ""
-  }</div>`;
+  return `<div class="empty${isError ? " err" : ""}">${EMPTY_ICONS[isError ? "alert" : "list"]}<div class="e-title">${esc(
+    title
+  )}</div>${sub ? `<div class="sub">${esc(sub)}</div>` : ""}</div>`;
 }
 
 // 行高不够时逐级收敛：先收起名称，再缩小字号，最后连分时图也不要。
@@ -692,9 +719,11 @@ function renderResults(hits, info = {}) {
   const shown = hits.slice(0, 20);
 
   if (!shown.length) {
-    searchResults.innerHTML = `<div class="search-note${info.error ? " err" : ""}">${esc(
+    // 空结果也带一个小图标：放大镜（没搜到）或感叹号（请求失败）
+    const icon = EMPTY_ICONS[info.icon] || "";
+    searchResults.innerHTML = `<div class="search-note${info.error ? " err" : ""}">${icon}<span>${esc(
       info.note || tx("noMatch")
-    )}</div>`;
+    )}</span></div>`;
   } else {
     searchResults.innerHTML = shown
       .map((h) => {
@@ -751,6 +780,7 @@ async function runSearch(raw) {
       .map((x) => x.h);
     renderResults(ranked, {
       note: tx("noMatch"),
+      icon: "search",
       foot: ranked.length
         ? tx("resultFoot", { n: ranked.length, scroll: ranked.length > 5 ? tx("scrollHint") : "" })
         : tx("tryAgain"),
@@ -759,7 +789,7 @@ async function runSearch(raw) {
     if (seq !== searchSeq) return;
     widget.log("stock search failed", String(err));
     if (!local.length) {
-      renderResults([], { note: tx("searchError"), error: true });
+      renderResults([], { note: tx("searchError"), error: true, icon: "alert" });
     } else {
       renderResults(local, { note: "", foot: tx("offline") });
     }
@@ -771,7 +801,7 @@ function queueSearch(q, delay = SEARCH_DEBOUNCE) {
   const cleaned = String(q || "").trim();
   if (!cleaned) {
     searchSeq++;
-    renderResults([], { note: tx("emptyQuery"), foot: tx("example") });
+    renderResults([], { note: tx("emptyQuery"), icon: "search", foot: tx("example") });
     return;
   }
   searchTimer = setTimeout(() => runSearch(cleaned), delay);
@@ -851,38 +881,71 @@ function readSettings() {
   };
 }
 
-// 交易时段：周一到周五 09:15–11:35、12:55–15:05，按**北京时间**判断。
-// 海外用户的电脑时区不是 UTC+8，所以不用本地时间，改用 Intl 取 Asia/Shanghai；
-// 环境不支持该时区表时退回本地时间（错误的方向总比崩溃好）。
-const BJ_FMT = new Intl.DateTimeFormat("en-US", {
-  timeZone: "Asia/Shanghai",
-  weekday: "short",
-  hour: "numeric",
-  minute: "numeric",
-  hour12: false,
-});
+/* -------------------------------------------------- 交易时段（按品种所属市场）
+   组件已经不限制品种，A 股 / 港股 / 美股 / 外汇 / 全球指数的开盘时间各不相同：
+   只看 A 股时段的话，美股开盘时（北京时间晚上）会被误判成休市、降到 5 分钟刷新一次。
+   所以按当前自选股里出现的市场分别判断，任一市场开盘就按设定频率刷新。
+   每个市场都用当地时区取星期和分钟数，海用户的电脑时区不影响判断；
+   美股用 America/New_York 还能自动跟随夏令时，不用硬编码时差。 */
 const WEEKDAYS = { Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5 };
+const ZONE_FORMATTERS = new Map();
 
-function beijingClock(now = new Date()) {
-  try {
-    const parts = {};
-    for (const p of BJ_FMT.formatToParts(now)) parts[p.type] = p.value;
-    const hour = Number(parts.hour) === 24 ? 0 : Number(parts.hour); // en-US 的 24:00 写法
-    return { weekday: WEEKDAYS[parts.weekday] || 0, minute: hour * 60 + Number(parts.minute) };
-  } catch (err) {
-    return { weekday: now.getDay(), minute: now.getHours() * 60 + now.getMinutes() };
+function clockIn(timeZone, now) {
+  let fmt = ZONE_FORMATTERS.get(timeZone);
+  if (fmt === undefined) {
+    try {
+      fmt = new Intl.DateTimeFormat("en-US", {
+        timeZone, weekday: "short", hour: "numeric", minute: "numeric", hour12: false,
+      });
+    } catch (err) { fmt = null; }
+    ZONE_FORMATTERS.set(timeZone, fmt);
   }
+  if (!fmt) return null;
+  const parts = {};
+  for (const p of fmt.formatToParts(now)) parts[p.type] = p.value;
+  const hour = Number(parts.hour) === 24 ? 0 : Number(parts.hour); // en-US 的 24:00 写法
+  return { weekday: WEEKDAYS[parts.weekday] || 0, minute: hour * 60 + Number(parts.minute) };
 }
 
-function isTradingTime(now = new Date()) {
-  const { weekday, minute } = beijingClock(now);
-  if (!weekday) return false;
-  return (minute >= 555 && minute <= 695) || (minute >= 775 && minute <= 905);
+// 窗口都是**当地时间**的分钟数，开盘前 / 收盘后留几分钟余量，保证最后一根价能刷到。
+const SESSIONS = {
+  cn:     { tz: "Asia/Shanghai",    windows: [[555, 695], [775, 905]] }, // 09:15–11:35 / 12:55–15:05
+  hk:     { tz: "Asia/Hong_Kong",   windows: [[540, 730], [775, 980]] }, // 09:00–12:10 / 12:55–16:20
+  us:     { tz: "America/New_York", windows: [[540, 1020]] },             // 09:00–17:00（含盘前 / 盘后）
+  allDay: { tz: "Asia/Shanghai",    windows: [[0, 1440]] },               // 外汇 / 全球指数：工作日全天
+};
+
+// 市场编号 → 用哪个交易时段。直接复用搜索标签那张编号表，避免两处维护。
+const SESSION_BY_TAG = { hk: "hk", us: "us", global: "allDay", fx: "allDay", otc: "allDay" };
+function sessionOf(market) {
+  return SESSION_BY_TAG[MARKET_TAG[Number(market)]] || "cn";
+}
+
+function isMarketOpen(items, now = new Date()) {
+  const sessions = new Set((items || []).map((it) => sessionOf(it.market)));
+  if (!sessions.size) sessions.add("cn"); // 空列表按 A 股时段走，保持原来的行为
+  let anyClock = false;
+  for (const key of sessions) {
+    const conf = SESSIONS[key] || SESSIONS.cn;
+    const c = clockIn(conf.tz, now);
+    if (!c) continue;
+    anyClock = true;
+    if (!c.weekday) continue; // 周末一律休市
+    if (conf.windows.some(([from, to]) => c.minute >= from && c.minute <= to)) return true;
+  }
+  // 环境完全没有时区表时退回本地时间，至少 A 股时段还能正常刷新（错误的方向总比崩溃好）
+  if (!anyClock) {
+    const weekday = now.getDay();
+    const minute = now.getHours() * 60 + now.getMinutes();
+    return weekday >= 1 && weekday <= 5 &&
+      SESSIONS.cn.windows.some(([from, to]) => minute >= from && minute <= to);
+  }
+  return false;
 }
 
 function schedule(cfg) {
   clearTimeout(timer);
-  const wait = isTradingTime() ? cfg.interval : Math.max(cfg.interval, IDLE_INTERVAL);
+  const wait = isMarketOpen(items) ? cfg.interval : Math.max(cfg.interval, IDLE_INTERVAL);
   timer = setTimeout(refresh, wait);
 }
 
