@@ -186,7 +186,7 @@ async function syncReminders() {
 
 async function playBell() {
   try {
-    const saved = localStorage.getItem(bellKey);
+    const saved = await widget.storage.get(bellKey);
     if (saved) {
       customPlayer ??= new Audio();
       if (customPlayer.src !== saved) customPlayer.src = saved;
@@ -239,9 +239,9 @@ function importLabel(data) {
   return [`已导入 ${data.events.length} 个上课时段`, data.notice].filter(Boolean).join(' · ');
 }
 
-function loadSchedule() {
+async function loadSchedule() {
   try {
-    const stored = JSON.parse(localStorage.getItem(scheduleKey));
+    const stored = await widget.storage.get(scheduleKey);
     if (stored?.events?.length && Number.isInteger(stored.firstDay) && Number.isInteger(stored.weeks)) {
       schedule = stored;
       setImportStatus(importLabel(stored));
@@ -266,8 +266,7 @@ function bindImport() {
     try {
       if (file.size > TimetableImport.maxFile) throw new Error('课表文件大小须在 2 MB 以内');
       const replacement = TimetableImport.parse(file.name, await file.arrayBuffer());
-      try { localStorage.setItem(scheduleKey, JSON.stringify(replacement)); }
-      catch { throw new Error('本地存储不足，课表未更换'); }
+      await widget.storage.set(scheduleKey, replacement);
       const firstImport = !schedule;
       schedule = replacement;
       followToday = true;
@@ -286,18 +285,18 @@ function bindImport() {
   };
 }
 
-function init() {
-  loadSchedule();
+async function init() {
+  await loadSchedule();
   bindImport();
   byId('prev').onclick = () => selectDay(selectedDay - 7);
   byId('next').onclick = () => selectDay(selectedDay + 7);
   byId('today').onclick = () => selectDay(ClassSchedule.dayOf(Date.now()));
   byId('test').onclick = playBell;
   byId('choose').onclick = () => byId('file').click();
-  byId('reset').hidden = !localStorage.getItem(bellKey);
-  byId('reset').onclick = () => {
+  byId('reset').hidden = !(await widget.storage.get(bellKey));
+  byId('reset').onclick = async () => {
     customPlayer?.pause();
-    localStorage.removeItem(bellKey);
+    await widget.storage.remove(bellKey);
     byId('reset').hidden = true;
     void playBell();
   };
@@ -311,10 +310,10 @@ function init() {
       return;
     }
     const reader = new FileReader();
-    reader.onload = () => {
+    reader.onload = async () => {
       try {
         const format = { mp3: 'mpeg', wav: 'wav', ogg: 'ogg' }[file.name.split('.').pop().toLowerCase()];
-        localStorage.setItem(bellKey, reader.result.replace(/^data:[^;]*/, `data:audio/${format}`));
+        await widget.storage.set(bellKey, reader.result.replace(/^data:[^;]*/, `data:audio/${format}`));
         byId('reset').hidden = false;
         void playBell();
       } catch {
@@ -344,9 +343,7 @@ function init() {
   setInterval(tick, 5000);
 }
 
-try {
-  init();
-} catch (error) {
+void init().catch(error => {
   byId('status').textContent = String(error.message || error);
   widget.log(String(error));
-}
+});
