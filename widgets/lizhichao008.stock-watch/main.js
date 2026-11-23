@@ -67,7 +67,8 @@ const tx = (key, vars) => {
 };
 
 // 自选股行情组件
-// 行情 / 搜索都来自东方财富的公开接口，由 widget.fetch 代发（不受 CORS 限制）。
+// 行情主要走腾讯（批量报价一次拿回整批，分时按市场分流），东财只做兜底；
+// 搜索仍用东财联想接口。都由 widget.fetch 代发（不受 CORS 限制）。
 // 交易时段按自选股所属市场分别判断，开盘用设定频率刷新，全部休市才降到 5 分钟一次。
 // 搜索支持代码、中文简称、拼音首字母，结果点一下即可写回「自选股」设置。
 
@@ -96,6 +97,14 @@ function setOffline(on) {
   document.body.classList.toggle("offline", on);
 }
 
+/* 腾讯：批量报价 + 分时。批量是它相对东财最大的优势——一轮 12 只只要 1 个请求。 */
+// /utf8/ 前缀必须带：不带的话返回的是 GBK，r.text() 会解成乱码。
+const TX_QUOTE_API = "https://sqt.gtimg.cn/utf8/q=";
+const TX_MINUTE_API = "https://web.ifzq.gtimg.cn/appstock/app/minute/query";
+const TX_US_MINUTE_API = "https://web.ifzq.gtimg.cn/appstock/app/usMinute/query";
+const TX_BATCH = 60; // 单批最多塞多少只：URL 别太长，远超 MAX_ROWS 也没意义
+
+/* 东财：只做兜底（腾讯不支持的品种 / 腾讯整体失手时），以及搜索联想。 */
 const QUOTE_API = "https://push2his.eastmoney.com/api/qt/stock/get";
 const TREND_API = "https://push2his.eastmoney.com/api/qt/stock/trends2/get";
 const SUGGEST_API = "https://searchapi.eastmoney.com/api/suggest/get";
@@ -300,7 +309,7 @@ const sleep = (ms) => new Promise((res) => setTimeout(res, ms));
 
 // 东财对同一个 IP 有短时频率限制：个股多了以后，一轮里同时甩出十几个请求，
 // 服务器会直接把连接掐掉（没有 HTTP 状态码，就是“拿不到数据”），冷却半分钟才恢复。
-// 所以压住同时进行的请求数，别把峰值顶到限流线上。
+// 现在报价已经换成腾讯批量（一轮 1 个请求），只剩分时和东财兜底还需要限并发。
 const CONCURRENCY = 3;
 
 // 小并发池：按顺序取任务，同时最多 limit 个在飞。
@@ -321,12 +330,12 @@ async function mapLimit(list, limit, fn) {
 // 4xx（除 429）不重试——参数错了重试也没用。
 const RETRY_DELAY = 650;
 
-async function fetchJson(url, tries = 2) {
+async function request(url, tries = 2) {
   let lastErr = new Error("fetch failed");
   for (let i = 0; i < tries; i++) {
     try {
       const r = await widget.fetch(url);
-      if (r.ok) return await r.json();
+      if (r.ok) return r;
       const status = Number(r.status) || 0;
       lastErr = new Error("HTTP " + status);
       if (status && status < 500 && status !== 429) break;
@@ -338,9 +347,91 @@ async function fetchJson(url, tries = 2) {
   throw lastErr;
 }
 
-// 逐只查询。东财的批量接口（ulist.np）在 .NET 的 HttpClient 下会被服务端断连，
-// 单只的 stock/get 反而稳定；并发交给 mapLimit 压到 3 个。
-async function fetchQuotes(list) {
+const fetchJson = async (url, tries) => (await request(url, tries)).json();
+const fetchText = async (url, tries) => (await request(url, tries)).text();
+
+/* ---- 腾讯：代码映射 ---- */
+
+// secid -> 腾讯代码。腾讯只认 sh / sz / bj / hk / us 这套前缀，
+// 期货、外汇、板块、债券、场外这些它一律不管，返回 null 表示「这批留在东财」。
+// 注意北交所：东财把它归在 0（深）里、代码 4 / 8 开头，腾讯要 bj 前缀。
+function tencentCode(it) {
+  const market = Number(it.market);
+  const code = String(it.code || "");
+  if (market === 0 || market === 1) {
+    if (!/^\d{6}$/.test(code)) return null;
+    if (market === 0 && /^[48]/.test(code)) return "bj" + code;
+    return (market === 1 ? "sh" : "sz") + code;
+  }
+  const tag = MARKET_TAG[market];
+  if (tag === "hk") return /^\d{1,5}$/.test(code) ? "hk" + code.padStart(5, "0") : null;
+  if (tag === "us") return /^[A-Za-z][A-Za-z.\-]{0,11}$/.test(code) ? "us" + code.toUpperCase() : null;
+  return null;
+}
+
+const isUSMarket = (it) => MARKET_TAG[Number(it.market)] === "us";
+
+/* ---- 腾讯：批量报价 ---- */
+
+// 腾讯的报价是一行一只的文本：「v_sh600519="1~贵州茅台~600519~现价~昨收~今开~…~涨跌~涨跌幅~…"」。
+// 字段位置四个市场完全一致：[1] 名称 [2] 代码 [3] 现价 [4] 昨收 [30] 时间 [31] 涨跌 [32] 涨跌幅。
+// 无效代码腾讯直接不返回那一行，所以「没出现在返回里」就等于没数据，比东财返回空 data 更好判断。
+const num = (v) => {
+  const n = Number(String(v).trim());
+  return Number.isFinite(n) ? n : null;
+};
+
+// 小数位从价格字符串里数（港股 336.400 是 3 位，A 股 1434.15 是 2 位），
+// 比东财的 f59 更省事，也不用额外维护一张市场对照表。
+function decimalsOf(s) {
+  const m = String(s || "").match(/\.(\d+)$/);
+  return m ? Math.min(m[1].length, 4) : 0;
+}
+
+function parseTencentQuote(f) {
+  if (!f || f.length < 33) return null;
+  const name = f[1] || "";
+  const price = num(f[3]);
+  const prevClose = num(f[4]);
+  if (!name && !prevClose) return null;
+  return {
+    name,
+    digits: decimalsOf(f[3]) || 2,
+    // 停牌 / 集合竞价前现价是 0，别当成真价格：价格留空显示 —，名称和昨收照留。
+    price: price > 0 ? price : null,
+    prevClose: prevClose > 0 ? prevClose : null,
+    change: num(f[31]),
+    percent: num(f[32]),
+  };
+}
+
+// 一次请求拿回一整批。12 只 → 1 个请求，这是相对东财逐只查询的根本差别。
+async function fetchTencentQuotes(list) {
+  const out = new Map();
+  const byCode = new Map();
+  for (const it of list) {
+    const code = tencentCode(it);
+    if (code) byCode.set(code, it);
+  }
+  const codes = [...byCode.keys()];
+  for (let i = 0; i < codes.length; i += TX_BATCH) {
+    const chunk = codes.slice(i, i + TX_BATCH);
+    const text = await fetchText(TX_QUOTE_API + chunk.join(","));
+    for (const m of text.matchAll(/v_([A-Za-z0-9_.]+)="([^"]*)"/g)) {
+      const it = byCode.get(m[1]);
+      if (!it) continue;
+      const q = parseTencentQuote(m[2].split("~"));
+      if (q) out.set(it.secid, q);
+    }
+  }
+  return out;
+}
+
+/* ---- 东财：逐只兜底 ---- */
+
+// 东财的批量接口（ulist.np）在 .NET 的 HttpClient 下会被服务端断连，所以只能逐只查；
+// 并发交给 mapLimit 压到 3 个。现在这条路只在腾讯不支持的品种或腾讯整体失手时才走。
+async function fetchEastmoneyQuotes(list) {
   const map = new Map();
   await mapLimit(list, CONCURRENCY, async (it) => {
     try {
@@ -366,6 +457,73 @@ async function fetchQuotes(list) {
   return map;
 }
 
+/* ---- 报价总入口：腾讯批量 → 缺口补东财 ---- */
+
+async function fetchQuotes(list) {
+  const map = new Map();
+  const txList = list.filter((it) => tencentCode(it));
+
+  if (txList.length) {
+    try {
+      for (const [k, v] of await fetchTencentQuotes(txList)) map.set(k, v);
+    } catch (err) {
+      // 腾讯整批失败（断网 / 被掐）就先记一笔，下面会用东财把整张表补齐。
+      widget.log("tencent quotes failed", String(err));
+    }
+  }
+
+  // 腾讯不管的品种（期货 / 外汇 / 板块 / 债券…），加上腾讯这轮没给到的缺口。
+  // 正常一轮这里应该是空的，一个请求都不会发。
+  const missing = list.filter((it) => !map.has(it.secid));
+  if (missing.length) {
+    for (const [k, v] of await fetchEastmoneyQuotes(missing)) map.set(k, v);
+  }
+  return map;
+}
+
+/* ---- 分时 ---- */
+
+// 分时行格式：A 股 / 港股 / 指数 / ETF 是「时间 价格 成交量 成交额」，
+// 美股是「时间 价格 成交量」——只有第 1 段（价格）各市场通用，所以只取它。
+function trendPoints(rows) {
+  const out = [];
+  for (const line of rows) {
+    const p = Number(String(line).trim().split(/\s+/)[1]);
+    if (p > 0) out.push(p);
+  }
+  return out;
+}
+
+async function fetchEastmoneyTrend(it) {
+  const url = `${TREND_API}?secid=${it.secid}&fields1=f1,f2,f3,f4,f5,f6,f7,f8&fields2=f51,f53&iscr=0&ndays=1`;
+  const json = await fetchJson(url);
+  const rows = (json && json.data && json.data.trends) || [];
+  const points = [];
+  for (const line of rows) {
+    const price = parseFloat(String(line).split(",")[1]);
+    if (Number.isFinite(price)) points.push(price);
+  }
+  return points;
+}
+
+// 腾讯的分时按市场分两个端点：A 股 / 港股 / 指数走 minute，
+// 美股必须走 usMinute——常规 minute 对美股休市时只回 1 个点，分时图会退化成一个小圆点。
+async function fetchTrendOne(it) {
+  const code = tencentCode(it);
+  if (code) {
+    try {
+      const url = `${isUSMarket(it) ? TX_US_MINUTE_API : TX_MINUTE_API}?code=${code}`;
+      const json = await fetchJson(url);
+      const node = json && json.data && json.data[code];
+      const points = trendPoints((node && node.data && node.data.data) || []);
+      if (points.length) return points;
+    } catch (err) {
+      // 落到东财
+    }
+  }
+  return fetchEastmoneyTrend(it);
+}
+
 async function fetchTrends(list) {
   const out = new Map();
   await mapLimit(list, CONCURRENCY, async (it) => {
@@ -375,16 +533,9 @@ async function fetchTrends(list) {
       return;
     }
     try {
-      const url = `${TREND_API}?secid=${it.secid}&fields1=f1,f2,f3,f4,f5,f6,f7,f8&fields2=f51,f53&iscr=0&ndays=1`;
-      const json = await fetchJson(url);
-      const rows = (json && json.data && json.data.trends) || [];
-      const points = [];
-      for (const line of rows) {
-        const price = parseFloat(String(line).split(",")[1]);
-        if (Number.isFinite(price)) points.push(price);
-      }
-      trendCache.set(it.secid, { ts: Date.now(), points });
-      out.set(it.secid, points);
+      const points = await fetchTrendOne(it);
+      if (points.length) trendCache.set(it.secid, { ts: Date.now(), points });
+      out.set(it.secid, points.length ? points : hit ? hit.points : []);
     } catch (err) {
       out.set(it.secid, hit ? hit.points : []);
     }

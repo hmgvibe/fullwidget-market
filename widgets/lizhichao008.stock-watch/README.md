@@ -34,6 +34,29 @@ FullWidget 桌面组件：自选股实时行情 + 分时走势，支持按代码
    行高变大后图贴着行顶、名称和价格垂直居中，看起来像整体错位。
    改成 `align-self: center` + `height: 100%`，上限按行高 55% 跟随（封顶 120px），
    默认尺寸仍是原来的 46px 上限，外观不变。
+6. **行情源换成腾讯，报价改成批量请求**（本次最实质的改动）：
+   - **报价一次拿回整批**。12 只股票原来要发 12 个东财请求，现在只发 **1 个**。
+     接口 `sqt.gtimg.cn/utf8/q=<code1>,<code2>,...`，**`/utf8/` 前缀必须带**——
+     不带的话返回 GBK，`r.text()` 会解成乱码。返回是「一行一只」的文本
+     `v_sh600519="1~贵州茅台~600519~现价~昨收~…"`，字段位置四个市场完全一致：
+     `[1]` 名称、`[2]` 代码、`[3]` 现价、`[4]` 昨收、`[31]` 涨跌、`[32]` 涨跌幅。
+     无效代码腾讯直接不返回那一行，比东财返回空 `data` 更好判断。
+     实测一次塞 14 只（A 股 / 指数 / ETF / 港股 / 美股）约 6.8 KB。
+   - **分时也走腾讯，按市场分两个端点**：A 股 / 指数 / ETF / 港股用
+     `appstock/app/minute/query`；美股必须用 `appstock/app/usMinute/query`——
+     常规 `minute` 端点对美股休市时只回 1 个点，分时图会退化成一个小圆点，
+     `usMinute` 能拿到整个交易日（实测 391 个点）。两者行格式不同
+     （A 股「时间 价格 成交量 成交额」、美股「时间 价格 成交量」），
+     只有第 1 段价格通用，所以只取 `split(/\s+/)[1]`。
+   - **东财降级为兜底**：期货 / 外汇 / 板块 / 债券 / 场外这些腾讯不管的品种，
+     以及腾讯这轮漏掉的个别代码，仍走东财逐只补。正常一轮兜底是空的，一个请求都不发；
+     腾讯整批失手时东财把整张表补齐（第 4 条那套并发 3 + 退避 + 拉长间隔的机制全部保留）。
+   - **代码映射**：东财 secid → 腾讯代码。A 股 `0.` / `1.` → `sz` / `sh`，
+     北交所（东财归在 `0.`、代码 4 / 8 开头）要 `bj` 前缀，港股 `hk` + 补足 5 位，
+     美股 `us` + 大写；期货 / 外汇 / 板块这类返回 `null`，直接走东财。
+
+   实测请求数（12 只 A 股 + 港股 + 美股，含分时）：**1 个批量 + 12 个分时，东财 0 个**；
+   改动前是 24 个东财请求。
 
 ## v1.12.0：盘前 / 休市不再丢名称
 
@@ -164,9 +187,12 @@ FullWidget 桌面组件：自选股实时行情 + 分时走势，支持按代码
 
 ## 实现说明
 
-- 行情：`push2his.eastmoney.com/api/qt/stock/get`（逐只报价）+ `/trends2/get`（分时）。
-  东财的批量接口 `ulist.np/get` 在 .NET 的 HttpClient 下会被服务端断连，所以改用单只请求，
-  但**同时最多 3 个**（`mapLimit`），不把峰值顶到风控线上。
+- 行情（主）：`sqt.gtimg.cn/utf8/q=<code1>,<code2>,...` 一次批量报价，12 只只要 1 个请求；
+  分时 `web.ifzq.gtimg.cn/appstock/app/minute/query`（A 股 / 指数 / ETF / 港股）
+  与 `.../usMinute/query`（美股）。字段位置见上文 v1.13.0 第 6 条。
+- 行情（兜底）：`push2his.eastmoney.com/api/qt/stock/get`（逐只）+ `/trends2/get`（分时）。
+  只在腾讯不支持的品种（期货 / 外汇 / 板块 / 债券 / 场外）或腾讯失手时才会被调用；
+  走的时候用 `mapLimit` 把并发压到 3 个，别把峰值顶到东财的风控线上。
 - 搜索：`searchapi.eastmoney.com/api/suggest/get?type=14`，服务端自带拼音首字母，
   返回 `QuoteID`（即 `0.002242` / `1.600519` / `116.00700`）直接当 secid 用，不用自己猜交易所。
   **不按 `Classify` 过滤**，只把 `QuoteID` 能解析成 secid 的都收下；`Classify` 存进
@@ -176,8 +202,9 @@ FullWidget 桌面组件：自选股实时行情 + 分时走势，支持按代码
   `cn` / `hk` / `us` / `allDay` 四组时段之一，用 `clockIn(tz)` 拿当地星期和分钟数判断，
   任一开盘即用用户设定的间隔，全休市才用 `IDLE_INTERVAL`（5 分钟）。
   用当地时区而不是硬编码时差，美股夏令时切换不用改代码。
-- 因此 `widget.json` 声明了 `network:push2his.eastmoney.com`、`network:searchapi.eastmoney.com`
-  和 `shell.open` 三个权限。数据仅供参考，不构成投资建议。
+- 因此 `widget.json` 声明了 `network:sqt.gtimg.cn`、`network:web.ifzq.gtimg.cn`、
+  `network:push2his.eastmoney.com`、`network:searchapi.eastmoney.com` 和 `shell.open` 五个权限。
+  数据仅供参考，不构成投资建议。
 - 编辑态沿用内置 launcher 的结构：`body.editing` class + 一个 `.edit` 按钮切换「编辑 / 完成」+ `.adder`
   + 每行最前面的线性 `.minus`（透明底 + 红色描边）。
   删除和拖拽排序都走 `writeStocks()` → `widget.settings.set("stocks", …)`

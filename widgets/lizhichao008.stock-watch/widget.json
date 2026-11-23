@@ -27,8 +27,11 @@
   },
   "layer": "desktop",
 
-  // 行情与搜索都来自东方财富的公开接口；shell.open 只用于点击行打开行情页
+  // 行情走腾讯（批量报价 + 分时），东财只做兜底与搜索联想；
+  // shell.open 只用于点击行打开行情页
   "permissions": [
+    "network:sqt.gtimg.cn",
+    "network:web.ifzq.gtimg.cn",
     "network:push2his.eastmoney.com",
     "network:searchapi.eastmoney.com",
     "shell.open"
