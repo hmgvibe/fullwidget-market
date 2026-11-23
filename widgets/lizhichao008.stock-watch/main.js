@@ -112,6 +112,7 @@ let items = [];
 let timer = 0;
 let busy = false;
 let dirty = false; // 刷新途中又改了设置，这一轮结束后立刻再来一次
+let failStreak = 0; // 连续整轮失败的次数：用来退避，别一直撞东财的限流
 
 let searchIndex = []; // [{ secid, code, label, name, py, board }]
 let searchSeq = 0; // 丢弃过期的搜索结果
@@ -295,65 +296,99 @@ const TAG = {
 
 /* ---------------------------------------------------------------- 数据获取 */
 
+const sleep = (ms) => new Promise((res) => setTimeout(res, ms));
+
+// 东财对同一个 IP 有短时频率限制：个股多了以后，一轮里同时甩出十几个请求，
+// 服务器会直接把连接掐掉（没有 HTTP 状态码，就是“拿不到数据”），冷却半分钟才恢复。
+// 所以压住同时进行的请求数，别把峰值顶到限流线上。
+const CONCURRENCY = 3;
+
+// 小并发池：按顺序取任务，同时最多 limit 个在飞。
+async function mapLimit(list, limit, fn) {
+  const out = new Array(list.length);
+  let next = 0;
+  const workers = Array.from({ length: Math.min(limit, list.length) }, async () => {
+    while (next < list.length) {
+      const i = next++;
+      out[i] = await fn(list[i], i);
+    }
+  });
+  await Promise.all(workers);
+  return out;
+}
+
+// 单只请求失败再补一次：限流边缘的断连大多是瞬时的，退避几百毫秒重试往往就通了。
+// 4xx（除 429）不重试——参数错了重试也没用。
+const RETRY_DELAY = 650;
+
+async function fetchJson(url, tries = 2) {
+  let lastErr = new Error("fetch failed");
+  for (let i = 0; i < tries; i++) {
+    try {
+      const r = await widget.fetch(url);
+      if (r.ok) return await r.json();
+      const status = Number(r.status) || 0;
+      lastErr = new Error("HTTP " + status);
+      if (status && status < 500 && status !== 429) break;
+    } catch (err) {
+      lastErr = err;
+    }
+    if (i < tries - 1) await sleep(RETRY_DELAY + Math.round(Math.random() * 300));
+  }
+  throw lastErr;
+}
+
 // 逐只查询。东财的批量接口（ulist.np）在 .NET 的 HttpClient 下会被服务端断连，
-// 单只的 stock/get 反而稳定，一只一个请求，最多 12 个并发。
+// 单只的 stock/get 反而稳定；并发交给 mapLimit 压到 3 个。
 async function fetchQuotes(list) {
   const map = new Map();
-  await Promise.all(
-    list.map(async (it) => {
-      try {
-        const url = `${QUOTE_API}?fltt=2&invt=2&secid=${it.secid}&fields=${QUOTE_FIELDS}`;
-        const r = await widget.fetch(url);
-        if (!r.ok) return;
-        const json = await r.json();
-        const d = json && json.data;
-        // 盘前 / 休市时现价 f43 是字符串 "-"，但名称 f58 和昨收 f60 还在：
-        // 保留它们，价格显示 —，别把整行变成「光秃秃的代码」。
-        // 完全没有 data（无效代码）才算失败。
-        if (!d || (!d.f58 && !Number.isFinite(d.f60))) return;
-        map.set(it.secid, {
-          name: d.f58 || "",
-          digits: Number.isFinite(d.f59) ? d.f59 : 2,
-          price: Number.isFinite(d.f43) ? d.f43 : null,
-          prevClose: Number.isFinite(d.f60) ? d.f60 : null,
-          change: Number.isFinite(d.f169) ? d.f169 : null,
-          percent: Number.isFinite(d.f170) ? d.f170 : null,
-        });
-      } catch (err) {
-        // 单只失败不影响其他
-      }
-    })
-  );
+  await mapLimit(list, CONCURRENCY, async (it) => {
+    try {
+      const url = `${QUOTE_API}?fltt=2&invt=2&secid=${it.secid}&fields=${QUOTE_FIELDS}`;
+      const json = await fetchJson(url);
+      const d = json && json.data;
+      // 盘前 / 休市时现价 f43 是字符串 "-"，但名称 f58 和昨收 f60 还在：
+      // 保留它们，价格显示 —，别把整行变成「光秃秃的代码」。
+      // 完全没有 data（无效代码）才算失败。
+      if (!d || (!d.f58 && !Number.isFinite(d.f60))) return;
+      map.set(it.secid, {
+        name: d.f58 || "",
+        digits: Number.isFinite(d.f59) ? d.f59 : 2,
+        price: Number.isFinite(d.f43) ? d.f43 : null,
+        prevClose: Number.isFinite(d.f60) ? d.f60 : null,
+        change: Number.isFinite(d.f169) ? d.f169 : null,
+        percent: Number.isFinite(d.f170) ? d.f170 : null,
+      });
+    } catch (err) {
+      // 单只失败不影响其他
+    }
+  });
   return map;
 }
 
 async function fetchTrends(list) {
   const out = new Map();
-  await Promise.all(
-    list.map(async (it) => {
-      const hit = trendCache.get(it.secid);
-      if (hit && Date.now() - hit.ts < TREND_TTL) {
-        out.set(it.secid, hit.points);
-        return;
+  await mapLimit(list, CONCURRENCY, async (it) => {
+    const hit = trendCache.get(it.secid);
+    if (hit && Date.now() - hit.ts < TREND_TTL) {
+      out.set(it.secid, hit.points);
+      return;
+    }
+    try {
+      const url = `${TREND_API}?secid=${it.secid}&fields1=f1,f2,f3,f4,f5,f6,f7,f8&fields2=f51,f53&iscr=0&ndays=1`;
+      const json = await fetchJson(url);
+      const rows = (json && json.data && json.data.trends) || [];
+      const points = [];
+      for (const line of rows) {
+        const price = parseFloat(String(line).split(",")[1]);
+        if (Number.isFinite(price)) points.push(price);
       }
-      try {
-        const url = `${TREND_API}?secid=${it.secid}&fields1=f1,f2,f3,f4,f5,f6,f7,f8&fields2=f51,f53&iscr=0&ndays=1`;
-        const r = await widget.fetch(url);
-        if (!r.ok) throw new Error("HTTP " + r.status);
-        const json = await r.json();
-        const rows = (json && json.data && json.data.trends) || [];
-        const points = [];
-        for (const line of rows) {
-          const price = parseFloat(String(line).split(",")[1]);
-          if (Number.isFinite(price)) points.push(price);
-        }
-        trendCache.set(it.secid, { ts: Date.now(), points });
-        out.set(it.secid, points);
-      } catch (err) {
-        out.set(it.secid, hit ? hit.points : []);
-      }
-    })
-  );
+      trendCache.set(it.secid, { ts: Date.now(), points });
+      out.set(it.secid, points);
+    } catch (err) {
+      out.set(it.secid, hit ? hit.points : []);
+    }
+  });
   return out;
 }
 
@@ -945,7 +980,10 @@ function isMarketOpen(items, now = new Date()) {
 
 function schedule(cfg) {
   clearTimeout(timer);
-  const wait = isMarketOpen(items) ? cfg.interval : Math.max(cfg.interval, IDLE_INTERVAL);
+  const base = isMarketOpen(items) ? cfg.interval : Math.max(cfg.interval, IDLE_INTERVAL);
+  // 连续两轮以上整轮失败，多半是碰上东财的短时限流了：把间隔拉长到 3 倍等它冷却。
+  // 成功一轮就归零，所以恢复后马上回到用户设定的频率。
+  const wait = failStreak >= 2 ? Math.min(base * 3, 5 * 60 * 1000) : base;
   timer = setTimeout(refresh, wait);
 }
 
@@ -968,10 +1006,12 @@ async function refresh() {
   try {
     const quotes = await fetchQuotes(items);
     if (!quotes.size) throw new Error("No quotes returned");
+    failStreak = 0;
     setOffline(false); // 拉到了数据就撤掉离线角标
     const charts = cfg.showChart ? await fetchTrends(items) : new Map();
     render(cfg, quotes, charts);
   } catch (err) {
+    failStreak++;
     widget.log("quotes fetch failed", String(err));
     if (!listEl.querySelector(".row")) {
       listEl.innerHTML = emptyHTML(tx("quoteError"), tx("quoteErrorSub"), true);

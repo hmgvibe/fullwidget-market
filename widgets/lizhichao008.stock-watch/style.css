@@ -146,9 +146,13 @@ html[data-theme="type"] .mkt {
   position: relative;
   flex: 1 1 0;
   min-width: 34px;
-  align-self: stretch;
-  height: auto;
-  max-height: 46px;
+  /* 垂直居中而不是 stretch：卡片被拉高时行高会超过上限，
+     stretch 会让图贴着行顶、和垂直居中的名称 / 价格错开一大截。 */
+  align-self: center;
+  height: 100%;
+  /* 默认尺寸仍封顶 46px；行高明显变大时按 55% 跟着长（最多 120px），
+     免得图在空荡的行里只占一小条。 */
+  max-height: min(120px, max(46px, 55%));
   padding: 3px 0; /* svg 绝对定位，inset:0 相对的是 padding box，所以这里留白就是折线的上下留白 */
   overflow: hidden;
 }
