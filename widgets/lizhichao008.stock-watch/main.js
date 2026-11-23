@@ -37,23 +37,23 @@ const I18N = {
   mktOtcTitle:   { "zh-TW": "境外 / 其它市場", "zh-CN": "境外 / 其它市场", en: "Overseas / other market" },
   searchPh:      { "zh-TW": "代碼 / 簡稱 / 拼音首字母", "zh-CN": "代码 / 简称 / 拼音首字母", en: "Code / name / initials" },
   backTitle:     { "zh-TW": "返回 (Esc)", "zh-CN": "返回 (Esc)", en: "Back (Esc)" },
-  noMatch:       { "zh-TW": "找不到符合的 A 股", "zh-CN": "没有找到匹配的 A 股", en: "No matching A-shares" },
+  noMatch:       { "zh-TW": "找不到符合的證券或品種", "zh-CN": "没有找到匹配的证券或品种", en: "No matching instruments" },
   added:         { "zh-TW": "✓ 已加入", "zh-CN": "✓ 已添加", en: "✓ Added" },
   toAdd:         { "zh-TW": "＋ 加入", "zh-CN": "＋ 添加", en: "+ Add" },
   searching:     { "zh-TW": "搜尋中…", "zh-CN": "正在搜索…", en: "Searching…" },
   localResults:  { "zh-TW": "本機快取結果", "zh-CN": "本地缓存结果", en: "Cached results" },
   resultFoot:    { "zh-TW": "共 {n} 條{scroll} · 點擊加入 / 移除 · Esc 返回", "zh-CN": "共 {n} 条{scroll} · 点击添加 / 移除 · Esc 返回", en: "{n} result(s){scroll} · click to add / remove · Esc to go back" },
   scrollHint:    { "zh-TW": " · 可捲動", "zh-CN": " · 可滚动", en: " · scroll" },
-  tryAgain:      { "zh-TW": "試試代碼、簡稱或拼音首字母", "zh-CN": "试试代码、简称或拼音首字母", en: "Try a code, name or initials" },
+  tryAgain:      { "zh-TW": "試試代碼、簡稱或拼音首字母，例如 AAPL、騰訊", "zh-CN": "试试代码、简称或拼音首字母，例如 AAPL、腾讯", en: "Try a code, name or initials (e.g. AAPL)" },
   searchError:   { "zh-TW": "搜尋失敗，請檢查網路或權限", "zh-CN": "搜索失败，请检查网络或权限", en: "Search failed — check network or permissions" },
   offline:       { "zh-TW": "離線結果（網路不可用）", "zh-CN": "离线结果（网络不可用）", en: "Offline results" },
   emptyQuery:    { "zh-TW": "輸入代碼 / 簡稱 / 拼音首字母", "zh-CN": "输入代码 / 简称 / 拼音首字母", en: "Enter a code, name or initials" },
-  example:       { "zh-TW": "例如 600519、茅台、GZMT", "zh-CN": "例如 600519、茅台、GZMT", en: "e.g. 600519 or GZMT" },
+  example:       { "zh-TW": "例如 600519、茅台、GZMT、AAPL", "zh-CN": "例如 600519、茅台、GZMT、AAPL", en: "e.g. 600519, GZMT or AAPL" },
   limitReached:  { "zh-TW": "最多 {n} 隻，請先移除一隻", "zh-CN": "最多 {n} 只，请先移除一只", en: "Up to {n} stocks — remove one first" },
   noStocks:      { "zh-TW": "還沒有自選股", "zh-CN": "还没有自选股", en: "No stocks yet" },
-  noStocksSub:   { "zh-TW": "點「編輯」→「＋ 新增股票」，或在控制中心搜尋", "zh-CN": "点「编辑」→「＋ 新增股票」，或在控制中心搜索", en: "Click Edit → + Add stock, or search in Control Center" },
+  noStocksSub:   { "zh-TW": "點「編輯」→「＋ 新增股票」\n也可以在控制中心搜尋", "zh-CN": "点「编辑」→「＋ 新增股票」\n也可以在控制中心搜索", en: "Click Edit → + Add stock\nor search from Control Center" },
   quoteError:    { "zh-TW": "行情取得失敗", "zh-CN": "行情获取失败", en: "Couldn't load quotes" },
-  quoteErrorSub: { "zh-TW": "檢查網路，或允許元件存取東方財富", "zh-CN": "检查网络，或允许组件访问东方财富", en: "Check the network, or allow access to Eastmoney" },
+  quoteErrorSub: { "zh-TW": "檢查網路\n或允許元件存取東方財富", "zh-CN": "检查网络\n或允许组件访问东方财富", en: "Check the network\nor allow access to Eastmoney" },
   netOffline:    { "zh-TW": "離線", "zh-CN": "离线", en: "offline" },
   netOfflineTitle:{ "zh-TW": "行情刷新失敗，顯示的是上一次的數據", "zh-CN": "行情刷新失败，显示的是上一次的数据", en: "Refresh failed — showing last data" },
   notFound:      { "zh-TW": "找不到這隻股票", "zh-CN": "找不到这只股票", en: "Not found" },
@@ -67,8 +67,9 @@ const tx = (key, vars) => {
 };
 
 // 自选股行情组件
-// 行情 / 搜索都来自东方财富的公开接口，由 widget.fetch 代发（不受 CORS 限制）。
-// 交易时段按设定的频率刷新，其余时间自动降到 5 分钟一次。
+// 行情主要走腾讯（批量报价一次拿回整批，分时按市场分流），东财只做兜底；
+// 搜索仍用东财联想接口。都由 widget.fetch 代发（不受 CORS 限制）。
+// 交易时段按自选股所属市场分别判断，开盘用设定频率刷新，全部休市才降到 5 分钟一次。
 // 搜索支持代码、中文简称、拼音首字母，结果点一下即可写回「自选股」设置。
 
 const $ = (id) => document.getElementById(id);
@@ -96,6 +97,14 @@ function setOffline(on) {
   document.body.classList.toggle("offline", on);
 }
 
+/* 腾讯：批量报价 + 分时。批量是它相对东财最大的优势——一轮 12 只只要 1 个请求。 */
+// /utf8/ 前缀必须带：不带的话返回的是 GBK，r.text() 会解成乱码。
+const TX_QUOTE_API = "https://sqt.gtimg.cn/utf8/q=";
+const TX_MINUTE_API = "https://web.ifzq.gtimg.cn/appstock/app/minute/query";
+const TX_US_MINUTE_API = "https://web.ifzq.gtimg.cn/appstock/app/usMinute/query";
+const TX_BATCH = 60; // 单批最多塞多少只：URL 别太长，远超 MAX_ROWS 也没意义
+
+/* 东财：只做兜底（腾讯不支持的品种 / 腾讯整体失手时），以及搜索联想。 */
 const QUOTE_API = "https://push2his.eastmoney.com/api/qt/stock/get";
 const TREND_API = "https://push2his.eastmoney.com/api/qt/stock/trends2/get";
 const SUGGEST_API = "https://searchapi.eastmoney.com/api/suggest/get";
@@ -112,6 +121,7 @@ let items = [];
 let timer = 0;
 let busy = false;
 let dirty = false; // 刷新途中又改了设置，这一轮结束后立刻再来一次
+let failStreak = 0; // 连续整轮失败的次数：用来退避，别一直撞东财的限流
 
 let searchIndex = []; // [{ secid, code, label, name, py, board }]
 let searchSeq = 0; // 丢弃过期的搜索结果
@@ -295,62 +305,241 @@ const TAG = {
 
 /* ---------------------------------------------------------------- 数据获取 */
 
-// 逐只查询。东财的批量接口（ulist.np）在 .NET 的 HttpClient 下会被服务端断连，
-// 单只的 stock/get 反而稳定，一只一个请求，最多 12 个并发。
+const sleep = (ms) => new Promise((res) => setTimeout(res, ms));
+
+// 东财对同一个 IP 有短时频率限制：个股多了以后，一轮里同时甩出十几个请求，
+// 服务器会直接把连接掐掉（没有 HTTP 状态码，就是“拿不到数据”），冷却半分钟才恢复。
+// 现在报价已经换成腾讯批量（一轮 1 个请求），只剩分时和东财兜底还需要限并发。
+const CONCURRENCY = 3;
+
+// 小并发池：按顺序取任务，同时最多 limit 个在飞。
+async function mapLimit(list, limit, fn) {
+  const out = new Array(list.length);
+  let next = 0;
+  const workers = Array.from({ length: Math.min(limit, list.length) }, async () => {
+    while (next < list.length) {
+      const i = next++;
+      out[i] = await fn(list[i], i);
+    }
+  });
+  await Promise.all(workers);
+  return out;
+}
+
+// 单只请求失败再补一次：限流边缘的断连大多是瞬时的，退避几百毫秒重试往往就通了。
+// 4xx（除 429）不重试——参数错了重试也没用。
+const RETRY_DELAY = 650;
+
+async function request(url, tries = 2) {
+  let lastErr = new Error("fetch failed");
+  for (let i = 0; i < tries; i++) {
+    try {
+      const r = await widget.fetch(url);
+      if (r.ok) return r;
+      const status = Number(r.status) || 0;
+      lastErr = new Error("HTTP " + status);
+      if (status && status < 500 && status !== 429) break;
+    } catch (err) {
+      lastErr = err;
+    }
+    if (i < tries - 1) await sleep(RETRY_DELAY + Math.round(Math.random() * 300));
+  }
+  throw lastErr;
+}
+
+const fetchJson = async (url, tries) => (await request(url, tries)).json();
+const fetchText = async (url, tries) => (await request(url, tries)).text();
+
+/* ---- 腾讯：代码映射 ---- */
+
+// secid -> 腾讯代码。腾讯只认 sh / sz / bj / hk / us 这套前缀，
+// 期货、外汇、板块、债券、场外这些它一律不管，返回 null 表示「这批留在东财」。
+// 注意北交所：东财把它归在 0（深）里、代码 4 / 8 开头，腾讯要 bj 前缀。
+function tencentCode(it) {
+  const market = Number(it.market);
+  const code = String(it.code || "");
+  if (market === 0 || market === 1) {
+    if (!/^\d{6}$/.test(code)) return null;
+    if (market === 0 && /^[48]/.test(code)) return "bj" + code;
+    return (market === 1 ? "sh" : "sz") + code;
+  }
+  const tag = MARKET_TAG[market];
+  if (tag === "hk") return /^\d{1,5}$/.test(code) ? "hk" + code.padStart(5, "0") : null;
+  if (tag === "us") return /^[A-Za-z][A-Za-z.\-]{0,11}$/.test(code) ? "us" + code.toUpperCase() : null;
+  return null;
+}
+
+const isUSMarket = (it) => MARKET_TAG[Number(it.market)] === "us";
+
+/* ---- 腾讯：批量报价 ---- */
+
+// 腾讯的报价是一行一只的文本：「v_sh600519="1~贵州茅台~600519~现价~昨收~今开~…~涨跌~涨跌幅~…"」。
+// 字段位置四个市场完全一致：[1] 名称 [2] 代码 [3] 现价 [4] 昨收 [30] 时间 [31] 涨跌 [32] 涨跌幅。
+// 无效代码腾讯直接不返回那一行，所以「没出现在返回里」就等于没数据，比东财返回空 data 更好判断。
+const num = (v) => {
+  const n = Number(String(v).trim());
+  return Number.isFinite(n) ? n : null;
+};
+
+// 小数位从价格字符串里数（港股 336.400 是 3 位，A 股 1434.15 是 2 位），
+// 比东财的 f59 更省事，也不用额外维护一张市场对照表。
+function decimalsOf(s) {
+  const m = String(s || "").match(/\.(\d+)$/);
+  return m ? Math.min(m[1].length, 4) : 0;
+}
+
+function parseTencentQuote(f) {
+  if (!f || f.length < 33) return null;
+  const name = f[1] || "";
+  const price = num(f[3]);
+  const prevClose = num(f[4]);
+  if (!name && !prevClose) return null;
+  return {
+    name,
+    digits: decimalsOf(f[3]) || 2,
+    // 停牌 / 集合竞价前现价是 0，别当成真价格：价格留空显示 —，名称和昨收照留。
+    price: price > 0 ? price : null,
+    prevClose: prevClose > 0 ? prevClose : null,
+    change: num(f[31]),
+    percent: num(f[32]),
+  };
+}
+
+// 一次请求拿回一整批。12 只 → 1 个请求，这是相对东财逐只查询的根本差别。
+async function fetchTencentQuotes(list) {
+  const out = new Map();
+  const byCode = new Map();
+  for (const it of list) {
+    const code = tencentCode(it);
+    if (code) byCode.set(code, it);
+  }
+  const codes = [...byCode.keys()];
+  for (let i = 0; i < codes.length; i += TX_BATCH) {
+    const chunk = codes.slice(i, i + TX_BATCH);
+    const text = await fetchText(TX_QUOTE_API + chunk.join(","));
+    for (const m of text.matchAll(/v_([A-Za-z0-9_.]+)="([^"]*)"/g)) {
+      const it = byCode.get(m[1]);
+      if (!it) continue;
+      const q = parseTencentQuote(m[2].split("~"));
+      if (q) out.set(it.secid, q);
+    }
+  }
+  return out;
+}
+
+/* ---- 东财：逐只兜底 ---- */
+
+// 东财的批量接口（ulist.np）在 .NET 的 HttpClient 下会被服务端断连，所以只能逐只查；
+// 并发交给 mapLimit 压到 3 个。现在这条路只在腾讯不支持的品种或腾讯整体失手时才走。
+async function fetchEastmoneyQuotes(list) {
+  const map = new Map();
+  await mapLimit(list, CONCURRENCY, async (it) => {
+    try {
+      const url = `${QUOTE_API}?fltt=2&invt=2&secid=${it.secid}&fields=${QUOTE_FIELDS}`;
+      const json = await fetchJson(url);
+      const d = json && json.data;
+      // 盘前 / 休市时现价 f43 是字符串 "-"，但名称 f58 和昨收 f60 还在：
+      // 保留它们，价格显示 —，别把整行变成「光秃秃的代码」。
+      // 完全没有 data（无效代码）才算失败。
+      if (!d || (!d.f58 && !Number.isFinite(d.f60))) return;
+      map.set(it.secid, {
+        name: d.f58 || "",
+        digits: Number.isFinite(d.f59) ? d.f59 : 2,
+        price: Number.isFinite(d.f43) ? d.f43 : null,
+        prevClose: Number.isFinite(d.f60) ? d.f60 : null,
+        change: Number.isFinite(d.f169) ? d.f169 : null,
+        percent: Number.isFinite(d.f170) ? d.f170 : null,
+      });
+    } catch (err) {
+      // 单只失败不影响其他
+    }
+  });
+  return map;
+}
+
+/* ---- 报价总入口：腾讯批量 → 缺口补东财 ---- */
+
 async function fetchQuotes(list) {
   const map = new Map();
-  await Promise.all(
-    list.map(async (it) => {
-      try {
-        const url = `${QUOTE_API}?fltt=2&invt=2&secid=${it.secid}&fields=${QUOTE_FIELDS}`;
-        const r = await widget.fetch(url);
-        if (!r.ok) return;
-        const json = await r.json();
-        const d = json && json.data;
-        if (!d || !Number.isFinite(d.f43)) return;
-        map.set(it.secid, {
-          name: d.f58,
-          digits: Number.isFinite(d.f59) ? d.f59 : 2,
-          price: d.f43,
-          prevClose: d.f60,
-          change: d.f169,
-          percent: d.f170,
-        });
-      } catch (err) {
-        // 单只失败不影响其他
-      }
-    })
-  );
+  const txList = list.filter((it) => tencentCode(it));
+
+  if (txList.length) {
+    try {
+      for (const [k, v] of await fetchTencentQuotes(txList)) map.set(k, v);
+    } catch (err) {
+      // 腾讯整批失败（断网 / 被掐）就先记一笔，下面会用东财把整张表补齐。
+      widget.log("tencent quotes failed", String(err));
+    }
+  }
+
+  // 腾讯不管的品种（期货 / 外汇 / 板块 / 债券…），加上腾讯这轮没给到的缺口。
+  // 正常一轮这里应该是空的，一个请求都不会发。
+  const missing = list.filter((it) => !map.has(it.secid));
+  if (missing.length) {
+    for (const [k, v] of await fetchEastmoneyQuotes(missing)) map.set(k, v);
+  }
   return map;
+}
+
+/* ---- 分时 ---- */
+
+// 分时行格式：A 股 / 港股 / 指数 / ETF 是「时间 价格 成交量 成交额」，
+// 美股是「时间 价格 成交量」——只有第 1 段（价格）各市场通用，所以只取它。
+function trendPoints(rows) {
+  const out = [];
+  for (const line of rows) {
+    const p = Number(String(line).trim().split(/\s+/)[1]);
+    if (p > 0) out.push(p);
+  }
+  return out;
+}
+
+async function fetchEastmoneyTrend(it) {
+  const url = `${TREND_API}?secid=${it.secid}&fields1=f1,f2,f3,f4,f5,f6,f7,f8&fields2=f51,f53&iscr=0&ndays=1`;
+  const json = await fetchJson(url);
+  const rows = (json && json.data && json.data.trends) || [];
+  const points = [];
+  for (const line of rows) {
+    const price = parseFloat(String(line).split(",")[1]);
+    if (Number.isFinite(price)) points.push(price);
+  }
+  return points;
+}
+
+// 腾讯的分时按市场分两个端点：A 股 / 港股 / 指数走 minute，
+// 美股必须走 usMinute——常规 minute 对美股休市时只回 1 个点，分时图会退化成一个小圆点。
+async function fetchTrendOne(it) {
+  const code = tencentCode(it);
+  if (code) {
+    try {
+      const url = `${isUSMarket(it) ? TX_US_MINUTE_API : TX_MINUTE_API}?code=${code}`;
+      const json = await fetchJson(url);
+      const node = json && json.data && json.data[code];
+      const points = trendPoints((node && node.data && node.data.data) || []);
+      if (points.length) return points;
+    } catch (err) {
+      // 落到东财
+    }
+  }
+  return fetchEastmoneyTrend(it);
 }
 
 async function fetchTrends(list) {
   const out = new Map();
-  await Promise.all(
-    list.map(async (it) => {
-      const hit = trendCache.get(it.secid);
-      if (hit && Date.now() - hit.ts < TREND_TTL) {
-        out.set(it.secid, hit.points);
-        return;
-      }
-      try {
-        const url = `${TREND_API}?secid=${it.secid}&fields1=f1,f2,f3,f4,f5,f6,f7,f8&fields2=f51,f53&iscr=0&ndays=1`;
-        const r = await widget.fetch(url);
-        if (!r.ok) throw new Error("HTTP " + r.status);
-        const json = await r.json();
-        const rows = (json && json.data && json.data.trends) || [];
-        const points = [];
-        for (const line of rows) {
-          const price = parseFloat(String(line).split(",")[1]);
-          if (Number.isFinite(price)) points.push(price);
-        }
-        trendCache.set(it.secid, { ts: Date.now(), points });
-        out.set(it.secid, points);
-      } catch (err) {
-        out.set(it.secid, hit ? hit.points : []);
-      }
-    })
-  );
+  await mapLimit(list, CONCURRENCY, async (it) => {
+    const hit = trendCache.get(it.secid);
+    if (hit && Date.now() - hit.ts < TREND_TTL) {
+      out.set(it.secid, hit.points);
+      return;
+    }
+    try {
+      const points = await fetchTrendOne(it);
+      if (points.length) trendCache.set(it.secid, { ts: Date.now(), points });
+      out.set(it.secid, points.length ? points : hit ? hit.points : []);
+    } catch (err) {
+      out.set(it.secid, hit ? hit.points : []);
+    }
+  });
   return out;
 }
 
@@ -510,10 +699,34 @@ function render(cfg, quotes, charts) {
   alignColumns();
 }
 
+// 空状态的线性小图标：全部用 currentColor 描边，跟着 --w-fg / --w-danger 走，
+// 三套主题（含无卡片的 type）都不用单独配色；尺寸交给 CSS，方便小卡片里缩小或隐藏。
+const EMPTY_ICONS = {
+  // 空自选股：一张空列表 + 「＋」
+  list: `<svg class="e-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+    stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <rect x="3.2" y="4.5" width="17.6" height="15" rx="3"/>
+    <path d="M7 9.5h6M7 14.5h3.5" opacity=".7"/>
+    <path d="M16.5 13v4M14.5 15h4"/>
+  </svg>`,
+  // 出错：圆圈感叹号
+  alert: `<svg class="e-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+    stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <circle cx="12" cy="12" r="8.2"/>
+    <path d="M12 7.9v4.6M12 15.9v.1"/>
+  </svg>`,
+  // 搜索：放大镜
+  search: `<svg class="e-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+    stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <circle cx="10.8" cy="10.8" r="6"/>
+    <path d="M15.4 15.4 20 20"/>
+  </svg>`,
+};
+
 function emptyHTML(title, sub, isError) {
-  return `<div class="empty${isError ? " err" : ""}">${esc(title)}${
-    sub ? `<div class="sub">${esc(sub)}</div>` : ""
-  }</div>`;
+  return `<div class="empty${isError ? " err" : ""}">${EMPTY_ICONS[isError ? "alert" : "list"]}<div class="e-title">${esc(
+    title
+  )}</div>${sub ? `<div class="sub">${esc(sub)}</div>` : ""}</div>`;
 }
 
 // 行高不够时逐级收敛：先收起名称，再缩小字号，最后连分时图也不要。
@@ -692,9 +905,11 @@ function renderResults(hits, info = {}) {
   const shown = hits.slice(0, 20);
 
   if (!shown.length) {
-    searchResults.innerHTML = `<div class="search-note${info.error ? " err" : ""}">${esc(
+    // 空结果也带一个小图标：放大镜（没搜到）或感叹号（请求失败）
+    const icon = EMPTY_ICONS[info.icon] || "";
+    searchResults.innerHTML = `<div class="search-note${info.error ? " err" : ""}">${icon}<span>${esc(
       info.note || tx("noMatch")
-    )}</div>`;
+    )}</span></div>`;
   } else {
     searchResults.innerHTML = shown
       .map((h) => {
@@ -751,6 +966,7 @@ async function runSearch(raw) {
       .map((x) => x.h);
     renderResults(ranked, {
       note: tx("noMatch"),
+      icon: "search",
       foot: ranked.length
         ? tx("resultFoot", { n: ranked.length, scroll: ranked.length > 5 ? tx("scrollHint") : "" })
         : tx("tryAgain"),
@@ -759,7 +975,7 @@ async function runSearch(raw) {
     if (seq !== searchSeq) return;
     widget.log("stock search failed", String(err));
     if (!local.length) {
-      renderResults([], { note: tx("searchError"), error: true });
+      renderResults([], { note: tx("searchError"), error: true, icon: "alert" });
     } else {
       renderResults(local, { note: "", foot: tx("offline") });
     }
@@ -771,7 +987,7 @@ function queueSearch(q, delay = SEARCH_DEBOUNCE) {
   const cleaned = String(q || "").trim();
   if (!cleaned) {
     searchSeq++;
-    renderResults([], { note: tx("emptyQuery"), foot: tx("example") });
+    renderResults([], { note: tx("emptyQuery"), icon: "search", foot: tx("example") });
     return;
   }
   searchTimer = setTimeout(() => runSearch(cleaned), delay);
@@ -851,38 +1067,74 @@ function readSettings() {
   };
 }
 
-// 交易时段：周一到周五 09:15–11:35、12:55–15:05，按**北京时间**判断。
-// 海外用户的电脑时区不是 UTC+8，所以不用本地时间，改用 Intl 取 Asia/Shanghai；
-// 环境不支持该时区表时退回本地时间（错误的方向总比崩溃好）。
-const BJ_FMT = new Intl.DateTimeFormat("en-US", {
-  timeZone: "Asia/Shanghai",
-  weekday: "short",
-  hour: "numeric",
-  minute: "numeric",
-  hour12: false,
-});
+/* -------------------------------------------------- 交易时段（按品种所属市场）
+   组件已经不限制品种，A 股 / 港股 / 美股 / 外汇 / 全球指数的开盘时间各不相同：
+   只看 A 股时段的话，美股开盘时（北京时间晚上）会被误判成休市、降到 5 分钟刷新一次。
+   所以按当前自选股里出现的市场分别判断，任一市场开盘就按设定频率刷新。
+   每个市场都用当地时区取星期和分钟数，海用户的电脑时区不影响判断；
+   美股用 America/New_York 还能自动跟随夏令时，不用硬编码时差。 */
 const WEEKDAYS = { Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5 };
+const ZONE_FORMATTERS = new Map();
 
-function beijingClock(now = new Date()) {
-  try {
-    const parts = {};
-    for (const p of BJ_FMT.formatToParts(now)) parts[p.type] = p.value;
-    const hour = Number(parts.hour) === 24 ? 0 : Number(parts.hour); // en-US 的 24:00 写法
-    return { weekday: WEEKDAYS[parts.weekday] || 0, minute: hour * 60 + Number(parts.minute) };
-  } catch (err) {
-    return { weekday: now.getDay(), minute: now.getHours() * 60 + now.getMinutes() };
+function clockIn(timeZone, now) {
+  let fmt = ZONE_FORMATTERS.get(timeZone);
+  if (fmt === undefined) {
+    try {
+      fmt = new Intl.DateTimeFormat("en-US", {
+        timeZone, weekday: "short", hour: "numeric", minute: "numeric", hour12: false,
+      });
+    } catch (err) { fmt = null; }
+    ZONE_FORMATTERS.set(timeZone, fmt);
   }
+  if (!fmt) return null;
+  const parts = {};
+  for (const p of fmt.formatToParts(now)) parts[p.type] = p.value;
+  const hour = Number(parts.hour) === 24 ? 0 : Number(parts.hour); // en-US 的 24:00 写法
+  return { weekday: WEEKDAYS[parts.weekday] || 0, minute: hour * 60 + Number(parts.minute) };
 }
 
-function isTradingTime(now = new Date()) {
-  const { weekday, minute } = beijingClock(now);
-  if (!weekday) return false;
-  return (minute >= 555 && minute <= 695) || (minute >= 775 && minute <= 905);
+// 窗口都是**当地时间**的分钟数，开盘前 / 收盘后留几分钟余量，保证最后一根价能刷到。
+const SESSIONS = {
+  cn:     { tz: "Asia/Shanghai",    windows: [[555, 695], [775, 905]] }, // 09:15–11:35 / 12:55–15:05
+  hk:     { tz: "Asia/Hong_Kong",   windows: [[540, 730], [775, 980]] }, // 09:00–12:10 / 12:55–16:20
+  us:     { tz: "America/New_York", windows: [[540, 1020]] },             // 09:00–17:00（含盘前 / 盘后）
+  allDay: { tz: "Asia/Shanghai",    windows: [[0, 1440]] },               // 外汇 / 全球指数：工作日全天
+};
+
+// 市场编号 → 用哪个交易时段。直接复用搜索标签那张编号表，避免两处维护。
+const SESSION_BY_TAG = { hk: "hk", us: "us", global: "allDay", fx: "allDay", otc: "allDay" };
+function sessionOf(market) {
+  return SESSION_BY_TAG[MARKET_TAG[Number(market)]] || "cn";
+}
+
+function isMarketOpen(items, now = new Date()) {
+  const sessions = new Set((items || []).map((it) => sessionOf(it.market)));
+  if (!sessions.size) sessions.add("cn"); // 空列表按 A 股时段走，保持原来的行为
+  let anyClock = false;
+  for (const key of sessions) {
+    const conf = SESSIONS[key] || SESSIONS.cn;
+    const c = clockIn(conf.tz, now);
+    if (!c) continue;
+    anyClock = true;
+    if (!c.weekday) continue; // 周末一律休市
+    if (conf.windows.some(([from, to]) => c.minute >= from && c.minute <= to)) return true;
+  }
+  // 环境完全没有时区表时退回本地时间，至少 A 股时段还能正常刷新（错误的方向总比崩溃好）
+  if (!anyClock) {
+    const weekday = now.getDay();
+    const minute = now.getHours() * 60 + now.getMinutes();
+    return weekday >= 1 && weekday <= 5 &&
+      SESSIONS.cn.windows.some(([from, to]) => minute >= from && minute <= to);
+  }
+  return false;
 }
 
 function schedule(cfg) {
   clearTimeout(timer);
-  const wait = isTradingTime() ? cfg.interval : Math.max(cfg.interval, IDLE_INTERVAL);
+  const base = isMarketOpen(items) ? cfg.interval : Math.max(cfg.interval, IDLE_INTERVAL);
+  // 连续两轮以上整轮失败，多半是碰上东财的短时限流了：把间隔拉长到 3 倍等它冷却。
+  // 成功一轮就归零，所以恢复后马上回到用户设定的频率。
+  const wait = failStreak >= 2 ? Math.min(base * 3, 5 * 60 * 1000) : base;
   timer = setTimeout(refresh, wait);
 }
 
@@ -905,10 +1157,12 @@ async function refresh() {
   try {
     const quotes = await fetchQuotes(items);
     if (!quotes.size) throw new Error("No quotes returned");
+    failStreak = 0;
     setOffline(false); // 拉到了数据就撤掉离线角标
     const charts = cfg.showChart ? await fetchTrends(items) : new Map();
     render(cfg, quotes, charts);
   } catch (err) {
+    failStreak++;
     widget.log("quotes fetch failed", String(err));
     if (!listEl.querySelector(".row")) {
       listEl.innerHTML = emptyHTML(tx("quoteError"), tx("quoteErrorSub"), true);

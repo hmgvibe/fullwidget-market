@@ -146,9 +146,13 @@ html[data-theme="type"] .mkt {
   position: relative;
   flex: 1 1 0;
   min-width: 34px;
-  align-self: stretch;
-  height: auto;
-  max-height: 46px;
+  /* 垂直居中而不是 stretch：卡片被拉高时行高会超过上限，
+     stretch 会让图贴着行顶、和垂直居中的名称 / 价格错开一大截。 */
+  align-self: center;
+  height: 100%;
+  /* 默认尺寸仍封顶 46px；行高明显变大时按 55% 跟着长（最多 120px），
+     免得图在空荡的行里只占一小条。 */
+  max-height: min(120px, max(46px, 55%));
   padding: 3px 0; /* svg 绝对定位，inset:0 相对的是 padding box，所以这里留白就是折线的上下留白 */
   overflow: hidden;
 }
@@ -204,23 +208,47 @@ html[data-theme="type"] .mkt {
 .down { color: var(--down); }
 .flat { color: var(--w-fg-muted); }
 
-/* ---------- 提示与空状态 ---------- */
+/* ---------- 提示与空状态 ----------
+   一个淡线性图标 + 标题 + 说明。图标用 currentColor 描边、整体降透明度，
+   所以三套主题（含无卡片的 type）都自动跟色，错误态换成 --w-danger。 */
 .empty {
   flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  gap: 7px;
   text-align: center;
+  color: var(--w-fg);
+}
+.empty .e-icon { flex: none; width: 26px; height: 26px; opacity: 0.45; }
+.empty .e-title {
   font-size: 0.92rem;
-  color: var(--w-fg-muted);
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: 0.01em;
 }
 .empty .sub {
-  font-size: 0.82rem;
-  color: var(--w-fg-faint);
+  max-width: 22em;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: var(--w-fg-muted); /* 不用 faint：浅色纸本上 18% 几乎看不见 */
+  white-space: pre-line; /* 文案里的 \n 是语义换行，别让浏览器把词拆开 */
 }
 .empty.err { color: var(--w-danger); }
+.empty.err .e-icon { opacity: 0.75; }
+.empty.err .sub { color: color-mix(in srgb, var(--w-danger) 72%, transparent); }
+
+/* 卡片被压扁时空态逐级收敛：先缩图标和字号，再只留标题 */
+@container (max-height: 130px) {
+  .empty { gap: 4px; }
+  .empty .e-icon { width: 17px; height: 17px; }
+  .empty .e-title { font-size: 0.86rem; }
+  .empty .sub { font-size: 0.73rem; }
+}
+@container (max-height: 100px) {
+  .empty .sub { display: none; }
+}
 
 /* ---------- 卡片被缩小时 ----------
    @container 量的是 body 的内容盒，已扣掉每边 padding 和窗外的阴影留白。
@@ -526,12 +554,20 @@ body.dragging .row:not(.is-dragging) { opacity: 0.5; }
   color: var(--w-fg-faint);
 }
 .search-note {
-  padding: 14px 4px;
+  padding: 12px 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 6px;
   text-align: center;
   font-size: 0.85rem;
+  line-height: 1.35;
   color: var(--w-fg-muted);
 }
+.search-note .e-icon { flex: none; width: 15px; height: 15px; opacity: 0.6; }
 .search-note.err { color: var(--w-danger); }
+.search-note.err .e-icon { opacity: 0.8; }
 
 @container (max-width: 246px) {
   .hit .h-sub { display: none; }
@@ -539,6 +575,7 @@ body.dragging .row:not(.is-dragging) { opacity: 0.5; }
 @container (max-height: 130px) {
   .hit { padding: 1px 5px; }
   .search-foot { display: none; }
+  .search-note { padding: 8px 4px; font-size: 0.8rem; }
 }
 
 /* 量列宽时临时让左右两列按内容自适应。!important 用来压过 density、编辑态、

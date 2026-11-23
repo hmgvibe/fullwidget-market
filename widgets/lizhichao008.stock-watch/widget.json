@@ -5,11 +5,11 @@
   "id": "lizhichao008.stock-watch",
   "name": { "zh-TW": "自選股", "zh-CN": "自选股", "en": "Stock Watchlist" },
   "description": {
-    "zh-TW": "自選股即時行情與分時走勢，可用代碼、簡稱或拼音首字母搜尋",
-    "zh-CN": "自选股实时行情与分时走势，可用代码、简称或拼音首字母搜索",
-    "en": "Live A-share quotes and intraday charts; search by code, name or pinyin initials"
+    "zh-TW": "自選股即時行情與分時走勢，支援 A 股、港股、美股、指數等品種，可用代碼、簡稱或拼音首字母搜尋",
+    "zh-CN": "自选股实时行情与分时走势，支持 A 股、港股、美股、指数等品种，可用代码、简称或拼音首字母搜索",
+    "en": "Live quotes and intraday charts for A-shares, HK/US stocks, indices and more; search by code, name or pinyin initials"
   },
-  "version": "1.11.0",
+  "version": "1.13.0",
   "author": "lizhichao008",
   "entry": "index.html",
   "icon": "icon.svg",
@@ -27,8 +27,11 @@
   },
   "layer": "desktop",
 
-  // 行情与搜索都来自东方财富的公开接口；shell.open 只用于点击行打开行情页
+  // 行情走腾讯（批量报价 + 分时），东财只做兜底与搜索联想；
+  // shell.open 只用于点击行打开行情页
   "permissions": [
+    "network:sqt.gtimg.cn",
+    "network:web.ifzq.gtimg.cn",
     "network:push2his.eastmoney.com",
     "network:searchapi.eastmoney.com",
     "shell.open"
@@ -41,9 +44,9 @@
       "type": "textarea",
       "label": { "zh-TW": "自選股", "zh-CN": "自选股", "en": "Watchlist" },
       "description": {
-        "zh-TW": "一行一檔，最多 12 檔。支援 002242.SZ、600989.SS、sh600519、sz000001 這幾種寫法",
-        "zh-CN": "一行一只，最多 12 只。支持 002242.SZ、600989.SS、sh600519、sz000001 这几种写法",
-        "en": "One ticker per line, up to 12. Accepts 002242.SZ, 600989.SS, sh600519, sz000001"
+        "zh-TW": "一行一檔，最多 12 檔。支援 002242.SZ、600989.SS、sh600519、sz000001 等 A 股寫法；港美股 / 指數可在元件上搜尋加入，或直接寫 116.00700、105.AAPL",
+        "zh-CN": "一行一只，最多 12 只。支持 002242.SZ、600989.SS、sh600519、sz000001 等 A 股写法；港美股 / 指数可在组件上搜索添加，或直接写 116.00700、105.AAPL",
+        "en": "One ticker per line, up to 12. Accepts A-share forms like 002242.SZ, 600989.SS, sh600519; add HK/US stocks and indices from the widget search, or write secids like 116.00700 / 105.AAPL"
       },
       "default": "002242.SZ\n600989.SS\n002078.SZ"
     },
@@ -52,14 +55,14 @@
       "type": "text",
       "label": { "zh-TW": "搜尋並加入股票", "zh-CN": "搜索并添加股票", "en": "Search & add" },
       "description": {
-        "zh-TW": "輸入代碼、簡稱或拼音首字母（如 600519、茅台、GZMT）。元件上會列出候選，點一下即可加入或移出自選",
-        "zh-CN": "输入代码、简称或拼音首字母（如 600519、茅台、GZMT）。组件上会列出候选，点一下即可加入或移出自选",
-        "en": "Type a code, name or pinyin initials (e.g. 600519, GZMT). Candidates appear on the widget; click to add or remove"
+        "zh-TW": "輸入代碼、簡稱或拼音首字母（如 600519、茅台、GZMT、AAPL）。A 股、港股、美股、指數、基金等都可搜尋，點一下即可加入或移出自選",
+        "zh-CN": "输入代码、简称或拼音首字母（如 600519、茅台、GZMT、AAPL）。A 股、港股、美股、指数、基金等都可搜索，点一下即可加入或移出自选",
+        "en": "Type a code, name or pinyin initials (e.g. 600519, GZMT, AAPL). Search A-shares, HK/US stocks, indices and funds; click to add or remove"
       },
       "placeholder": {
-        "zh-TW": "600519 / 茅台 / GZMT",
-        "zh-CN": "600519 / 茅台 / GZMT",
-        "en": "600519 / GZMT"
+        "zh-TW": "600519 / 茅台 / GZMT / AAPL",
+        "zh-CN": "600519 / 茅台 / GZMT / AAPL",
+        "en": "600519 / GZMT / AAPL"
       },
       "default": ""
     },
