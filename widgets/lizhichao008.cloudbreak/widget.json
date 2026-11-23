@@ -7,9 +7,10 @@
     "en": "Current weather, four metrics and 7-day forecast, follows your theme"
   },
   "version": "1.0.0",
-  "author": "Administrator",
+  "author": "lizhichao008",
   "entry": "index.html",
   "icon": "icon.svg",
+  "preview": "preview/{theme}.{lang}.webp",
   "category": "weather",
   "size": {
     "width": 470,
@@ -32,8 +33,12 @@
     {
       "key": "city",
       "type": "select",
-      "label": "城市",
-      "description": "选一个地级市；列表里没有的（县级市、港澳台以外的小地方）填下面的「自定义城市」",
+      "label": { "zh-TW": "城市", "zh-CN": "城市", "en": "City" },
+      "description": {
+        "zh-TW": "選一個地級市；列表裡沒有的，填下面的「自訂城市」",
+        "zh-CN": "选一个地级市；列表里没有的，填下面的「自定义城市」",
+        "en": "Pick a city; if it isn't in the list, use Custom city below"
+      },
       "default": "深圳",
       "options": [
           {"value": "北京", "label": "北京"},
@@ -416,26 +421,34 @@
     {
       "key": "cityText",
       "type": "text",
-      "label": "自定义城市",
-      "description": "填了就以它为准，例如 义乌、大理；支持「滨州 / 滨州市」两种写法",
+      "label": { "zh-TW": "自訂城市", "zh-CN": "自定义城市", "en": "Custom city" },
+      "description": {
+        "zh-TW": "填了就以它為準，例如 義烏、大理；「濱州」和「濱州市」兩種寫法都行",
+        "zh-CN": "填了就以它为准，例如 义乌、大理；「滨州」和「滨州市」两种写法都行",
+        "en": "Overrides the list above, e.g. Yiwu, Dali; with or without 市 both work"
+      },
       "default": ""
     },
     {
       "key": "place",
       "type": "text",
-      "label": "显示名称",
-      "description": "顶部显示的文字，留空则用接口返回的城市名",
+      "label": { "zh-TW": "顯示名稱", "zh-CN": "显示名称", "en": "Display name" },
+      "description": {
+        "zh-TW": "頂部顯示的文字，留空就用介面回傳的城市名",
+        "zh-CN": "顶部显示的文字，留空就用接口返回的城市名",
+        "en": "Text shown at the top; empty uses the city name from the data source"
+      },
       "default": ""
     },
     {
       "key": "refresh",
       "type": "select",
-      "label": "刷新频率",
+      "label": { "zh-TW": "重新整理頻率", "zh-CN": "刷新频率", "en": "Refresh every" },
       "default": 10,
       "options": [
-          {"value": 5, "label": "5 分钟"},
-          {"value": 10, "label": "10 分钟"},
-          {"value": 30, "label": "30 分钟"}
+          {"value": 5, "label": { "zh-TW": "5 分鐘", "zh-CN": "5 分钟", "en": "5 min" }},
+          {"value": 10, "label": { "zh-TW": "10 分鐘", "zh-CN": "10 分钟", "en": "10 min" }},
+          {"value": 30, "label": { "zh-TW": "30 分鐘", "zh-CN": "30 分钟", "en": "30 min" }}
       ]
     }
   ]

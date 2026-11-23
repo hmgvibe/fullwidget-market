@@ -10,6 +10,7 @@ A theme-following weather card for FullWidget — current conditions, four metri
 - **Metrics**: feels-like, humidity, wind (direction + Beaufort level) and air quality (value + 优/良/中/差 grade).
 - **7-day forecast**: daily icon, high/low and a temperature-range bar (blue → red); the bar grows with card height, and weekday labels shrink to one character when space is tight.
 - **Follows your theme**: every colour, radius, padding and font comes from FullWidget's `--w-*` variables, using the same conventions as the built-in widgets. Verified in `instrument`, `type` and `paper`, from the 470×300 default down to the 200×115 minimum, where content is progressively simplified.
+- **Three languages**: every label, weather description, AQI grade, weekday and settings field goes through `widget.t()`, so the card follows FullWidget's UI language (简体中文 / 繁體中文 / English) and falls back to English for anything else.
 
 ## Data source and privacy
 
@@ -37,6 +38,15 @@ Search results, geocoding, station codes and the last forecast are cached locall
 - Requires an internet connection for live data; cached data is shown when offline.
 - The two China Weather endpoints are used for domestic wind/AQI wording. If unavailable, the widget falls back to Open-Meteo values.
 - Data is provided by third parties and may be delayed or inaccurate.
+- Place names come from the geocoding service in Chinese and stay in Chinese in every language, since the underlying station data is China-only. Use the **Display name** setting to show something else at the top.
+
+## Icons and credits
+
+The animated weather icons in `assets/` come from **Meteocons** (https://meteocons.com), package `@meteocons/svg`, repository https://github.com/basmilius/meteocons. They are used under the **MIT License** (Copyright (c) 2020-present Bas Milius); the full license text is included in `LICENSE-ICONS.txt`.
+
+## Preview
+
+`preview/{theme}.{lang}.webp` — nine images, one for each theme (`instrument`, `paper`, `type`) and language (`zh-TW`, `zh-CN`, `en`), as `widget.json`'s `preview` field points to. Each is the 470×300 card at 0.9× (423×270) with a transparent background, drawn with the theme's own appearance — same format as the built-in widgets, so the thumbnail sits on the library card without a baked-in wallpaper.
 
 ## Development
 

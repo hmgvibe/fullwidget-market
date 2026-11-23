@@ -6,41 +6,60 @@
 const $ = (id) => document.getElementById(id);
 const HAS_WIDGET = typeof widget !== "undefined";
 
+/* ---------------- 多语言 ----------------
+ * widget.t 按 widget.locale 在 { zh-TW, zh-CN, en } 里挑一个，都没有时退回第一个键；
+ * 直接在浏览器打开 index.html 调试时没有宿主，这里退回简体。 */
+const LOCALE = (HAS_WIDGET && widget.locale) || navigator.language || "zh-CN";
+const t = (dict) =>
+  HAS_WIDGET && typeof widget.t === "function" ? widget.t(dict) : dict["zh-CN"] || dict.en;
+
+/* 星期按 locale 取（简：周一 / 繁：週一 / 英：Mon），Intl 拿不到时退回中文 */
+const WEEKDAY = (() => {
+  try {
+    const f = new Intl.DateTimeFormat(LOCALE, { weekday: "short" });
+    return (dt) => f.format(dt);
+  } catch (e) {
+    const cn = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
+    return (dt) => cn[dt.getDay()];
+  }
+})();
+const IS_CJK = /[\u3400-\u9fff]/;
+
 /* ---------------- 天气代码 → 图标与文字 ---------------- */
 const CODES = {
-  0:  ["clear-day", "clear-night", "晴"],
-  1:  ["partly-cloudy-day", "partly-cloudy-night", "晴间多云"],
-  2:  ["partly-cloudy-day", "partly-cloudy-night", "多云"],
-  3:  ["cloudy", "cloudy", "阴"],
-  45: ["fog-day", "fog-night", "雾"],
-  48: ["fog-day", "fog-night", "雾凇"],
-  51: ["drizzle", "drizzle", "毛毛雨"],
-  53: ["drizzle", "drizzle", "毛毛雨"],
-  55: ["drizzle", "drizzle", "浓毛毛雨"],
-  56: ["sleet", "sleet", "冻毛毛雨"],
-  57: ["sleet", "sleet", "冻毛毛雨"],
-  61: ["rain", "rain", "小雨"],
-  63: ["rain", "rain", "中雨"],
-  65: ["extreme-rain", "extreme-rain", "大雨"],
-  66: ["sleet", "sleet", "冻雨"],
-  67: ["sleet", "sleet", "冻雨"],
-  71: ["snow", "snow", "小雪"],
-  73: ["snow", "snow", "中雪"],
-  75: ["extreme-snow", "extreme-snow", "大雪"],
-  77: ["snow", "snow", "米雪"],
-  80: ["partly-cloudy-day-rain", "partly-cloudy-night-rain", "阵雨"],
-  81: ["partly-cloudy-day-rain", "partly-cloudy-night-rain", "阵雨"],
-  82: ["overcast-rain", "overcast-rain", "强阵雨"],
-  85: ["partly-cloudy-day-snow", "partly-cloudy-night", "阵雪"],
-  86: ["partly-cloudy-day-snow", "partly-cloudy-night", "强阵雪"],
-  95: ["thunderstorms", "thunderstorms", "雷阵雨"],
-  96: ["thunderstorms-rain", "thunderstorms-rain", "雷阵雨伴冰雹"],
-  99: ["thunderstorms-rain", "thunderstorms-rain", "强雷雨伴冰雹"],
+  0:  ["clear-day", "clear-night", { "zh-TW": "晴", "zh-CN": "晴", en: "Clear" }],
+  1:  ["partly-cloudy-day", "partly-cloudy-night", { "zh-TW": "晴間多雲", "zh-CN": "晴间多云", en: "Mainly clear" }],
+  2:  ["partly-cloudy-day", "partly-cloudy-night", { "zh-TW": "多雲", "zh-CN": "多云", en: "Partly cloudy" }],
+  3:  ["cloudy", "cloudy", { "zh-TW": "陰", "zh-CN": "阴", en: "Overcast" }],
+  45: ["fog-day", "fog-night", { "zh-TW": "霧", "zh-CN": "雾", en: "Fog" }],
+  48: ["fog-day", "fog-night", { "zh-TW": "霧凇", "zh-CN": "雾凇", en: "Rime fog" }],
+  51: ["drizzle", "drizzle", { "zh-TW": "毛毛雨", "zh-CN": "毛毛雨", en: "Drizzle" }],
+  53: ["drizzle", "drizzle", { "zh-TW": "毛毛雨", "zh-CN": "毛毛雨", en: "Drizzle" }],
+  55: ["drizzle", "drizzle", { "zh-TW": "濃毛毛雨", "zh-CN": "浓毛毛雨", en: "Heavy drizzle" }],
+  56: ["sleet", "sleet", { "zh-TW": "凍毛毛雨", "zh-CN": "冻毛毛雨", en: "Freezing drizzle" }],
+  57: ["sleet", "sleet", { "zh-TW": "凍毛毛雨", "zh-CN": "冻毛毛雨", en: "Freezing drizzle" }],
+  61: ["rain", "rain", { "zh-TW": "小雨", "zh-CN": "小雨", en: "Light rain" }],
+  63: ["rain", "rain", { "zh-TW": "中雨", "zh-CN": "中雨", en: "Moderate rain" }],
+  65: ["extreme-rain", "extreme-rain", { "zh-TW": "大雨", "zh-CN": "大雨", en: "Heavy rain" }],
+  66: ["sleet", "sleet", { "zh-TW": "凍雨", "zh-CN": "冻雨", en: "Freezing rain" }],
+  67: ["sleet", "sleet", { "zh-TW": "凍雨", "zh-CN": "冻雨", en: "Freezing rain" }],
+  71: ["snow", "snow", { "zh-TW": "小雪", "zh-CN": "小雪", en: "Light snow" }],
+  73: ["snow", "snow", { "zh-TW": "中雪", "zh-CN": "中雪", en: "Moderate snow" }],
+  75: ["extreme-snow", "extreme-snow", { "zh-TW": "大雪", "zh-CN": "大雪", en: "Heavy snow" }],
+  77: ["snow", "snow", { "zh-TW": "米雪", "zh-CN": "米雪", en: "Snow grains" }],
+  80: ["partly-cloudy-day-rain", "partly-cloudy-night-rain", { "zh-TW": "陣雨", "zh-CN": "阵雨", en: "Showers" }],
+  81: ["partly-cloudy-day-rain", "partly-cloudy-night-rain", { "zh-TW": "陣雨", "zh-CN": "阵雨", en: "Showers" }],
+  82: ["overcast-rain", "overcast-rain", { "zh-TW": "強陣雨", "zh-CN": "强阵雨", en: "Heavy showers" }],
+  85: ["partly-cloudy-day-snow", "partly-cloudy-night", { "zh-TW": "陣雪", "zh-CN": "阵雪", en: "Snow showers" }],
+  86: ["partly-cloudy-day-snow", "partly-cloudy-night", { "zh-TW": "強陣雪", "zh-CN": "强阵雪", en: "Heavy snow showers" }],
+  95: ["thunderstorms", "thunderstorms", { "zh-TW": "雷陣雨", "zh-CN": "雷阵雨", en: "Thunderstorm" }],
+  96: ["thunderstorms-rain", "thunderstorms-rain", { "zh-TW": "雷陣雨伴冰雹", "zh-CN": "雷阵雨伴冰雹", en: "Thunderstorm, hail" }],
+  99: ["thunderstorms-rain", "thunderstorms-rain", { "zh-TW": "強雷雨伴冰雹", "zh-CN": "强雷雨伴冰雹", en: "Severe storm, hail" }],
 };
 
 const desc = (code, isDay) => {
-  const row = CODES[code] || ["cloudy", "cloudy", "多云"];
-  return { icon: isDay ? row[0] : row[1], text: row[2] };
+  const row = CODES[code] || ["cloudy", "cloudy", { "zh-TW": "多雲", "zh-CN": "多云", en: "Cloudy" }];
+  return { icon: isDay ? row[0] : row[1], text: t(row[2]) };
 };
 
 /* ---------------- 小工具 ---------------- */
@@ -65,29 +84,105 @@ const GLOWS = [
 ];
 const glowFor = (icon) => (GLOWS.find(([re]) => re.test(icon)) || [null, "120, 175, 255"])[1];
 
+/* 空气质量：徽章上只放短词（优/良/中/差），完整等级名放 title */
+const AIR_SHORT = {
+  good: { "zh-TW": "優", "zh-CN": "优", en: "Good" },
+  ok: { "zh-TW": "良", "zh-CN": "良", en: "Fair" },
+  mid: { "zh-TW": "中", "zh-CN": "中", en: "Poor" },
+  bad: { "zh-TW": "差", "zh-CN": "差", en: "Bad" },
+};
+const AIR_FULL = {
+  good: { "zh-TW": "優", "zh-CN": "优", en: "Excellent" },
+  ok: { "zh-TW": "良", "zh-CN": "良", en: "Good" },
+  light: { "zh-TW": "輕度污染", "zh-CN": "轻度污染", en: "Lightly polluted" },
+  moderate: { "zh-TW": "中度污染", "zh-CN": "中度污染", en: "Moderately polluted" },
+  heavy: { "zh-TW": "重度污染", "zh-CN": "重度污染", en: "Heavily polluted" },
+  severe: { "zh-TW": "嚴重污染", "zh-CN": "严重污染", en: "Severely polluted" },
+};
+/* 阈值 → [样式, 徽章短词, 完整等级] */
+const AIR_TABLE = [
+  [300, "lv-bad", "bad", "severe"],
+  [200, "lv-bad", "bad", "heavy"],
+  [150, "lv-bad", "bad", "moderate"],
+  [100, "lv-mid", "mid", "light"],
+  [50, "lv-ok", "ok", "ok"],
+];
+
 function aqiLevel(aqi) {
-  if (aqi == null) return { short: "—", full: "空气", value: "—", cls: "" };
+  if (aqi == null) {
+    return { short: "—", full: t({ "zh-TW": "空氣品質", "zh-CN": "空气质量", en: "Air quality" }), value: "—", cls: "" };
+  }
   const a = Number(aqi);
-  let short = "优";
-  let full = "优";
-  let cls = "lv-good";
-  if (a > 300) { short = "差"; full = "严重污染"; cls = "lv-bad"; }
-  else if (a > 200) { short = "差"; full = "重度污染"; cls = "lv-bad"; }
-  else if (a > 150) { short = "差"; full = "中度污染"; cls = "lv-bad"; }
-  else if (a > 100) { short = "中"; full = "轻度污染"; cls = "lv-mid"; }
-  else if (a > 50) { short = "良"; full = "良"; cls = "lv-ok"; }
-  return { short, full, value: String(Math.round(a)), cls };
+  const row = AIR_TABLE.find(([min]) => a > min) || [0, "lv-good", "good", "good"];
+  return { short: t(AIR_SHORT[row[2]]), full: t(AIR_FULL[row[3]]), value: String(Math.round(a)), cls: row[1] };
 }
 
-const WIND_DIRS = ["北风", "东北风", "东风", "东南风", "南风", "西南风", "西风", "西北风"];
-const windFromDeg = (deg) => (deg == null ? "" : WIND_DIRS[Math.round((deg % 360) / 45) % 8]);
+/* 风向：接口给的是中文（「东北风」），按 8 向换成当前语言 */
+const WIND8 = [
+  { "zh-TW": "北風", "zh-CN": "北风", en: "N" },
+  { "zh-TW": "東北風", "zh-CN": "东北风", en: "NE" },
+  { "zh-TW": "東風", "zh-CN": "东风", en: "E" },
+  { "zh-TW": "東南風", "zh-CN": "东南风", en: "SE" },
+  { "zh-TW": "南風", "zh-CN": "南风", en: "S" },
+  { "zh-TW": "西南風", "zh-CN": "西南风", en: "SW" },
+  { "zh-TW": "西風", "zh-CN": "西风", en: "W" },
+  { "zh-TW": "西北風", "zh-CN": "西北风", en: "NW" },
+];
+const WIND8_ZH = WIND8.map((d) => d["zh-CN"]);
+const windFromDeg = (deg) => (deg == null ? "" : t(WIND8[Math.round((deg % 360) / 45) % 8]));
+const windDirText = (wd) => {
+  const s = String(wd || "").trim();
+  const i = WIND8_ZH.indexOf(s);
+  return i >= 0 ? t(WIND8[i]) : s;   // 「微风」之类少见的写法保持原样
+};
 
+/* 风力：接口给「2级」/「<3级」，没给就按 km/h 折成蒲福风级 */
+const LV_UNIT = { "zh-TW": "級", "zh-CN": "级", en: " Bft" };
+const LV_CALM = { "zh-TW": "微風", "zh-CN": "微风", en: "Light air" };
 function beaufort(kmh) {
   if (kmh == null) return "";
-  const t = [1, 5, 11, 19, 28, 38, 49, 61, 74, 88, 102, 117];
+  const step = [1, 5, 11, 19, 28, 38, 49, 61, 74, 88, 102, 117];
   let i = 0;
-  while (i < t.length && kmh >= t[i]) i++;
-  return i + "级";
+  while (i < step.length && kmh >= step[i]) i++;
+  return i + t(LV_UNIT);
+}
+function windLevelText(ws, kmh) {
+  const s = String(ws || "").trim();
+  if (s) {
+    const m = s.match(/^([<≤]?)\s*(\d+)\s*级?$/);
+    if (m) return (m[1] ? "≤" : "") + m[2] + t(LV_UNIT);
+    return /微风/.test(s) ? t(LV_CALM) : s;
+  }
+  return beaufort(kmh);
+}
+
+/* ---------------- 界面文字 ----------------
+ * index.html 里写的是简体（方便直接打开看效果），运行时按语言覆盖一遍。 */
+const K_MAX = { "zh-TW": "最高", "zh-CN": "最高", en: "H" };
+const K_MIN = { "zh-TW": "最低", "zh-CN": "最低", en: "L" };
+const K_POP = { "zh-TW": "降雨機率", "zh-CN": "降水概率", en: "Rain" };
+const K_FEELS = { "zh-TW": "體感", "zh-CN": "体感", en: "Feels" };
+const K_HUM = { "zh-TW": "濕度", "zh-CN": "湿度", en: "Humidity" };
+const K_AIR = { "zh-TW": "空氣品質", "zh-CN": "空气质量", en: "Air quality" };
+const PH_CITY = { "zh-TW": "輸入城市名，如 濱州", "zh-CN": "输入城市名，如 滨州", en: "City name, e.g. Binzhou" };
+const ARIA_CLOSE = { "zh-TW": "關閉", "zh-CN": "关闭", en: "Close" };
+const PICK_EMPTY = { "zh-TW": "沒有符合的城市，換個寫法試試", "zh-CN": "没有匹配的城市，换个写法试试", en: "No match — try another spelling" };
+const HERE = { "zh-TW": "當前位置", "zh-CN": "当前位置", en: "Current location" };
+const POP_TITLE = { "zh-TW": "今日降雨機率", "zh-CN": "今日降水概率", en: "Chance of rain today" };
+
+function paintChrome() {
+  document.documentElement.lang = LOCALE;
+  const put = (id, dict) => { const el = $(id); if (el) el.textContent = t(dict); };
+  put("kMax", K_MAX);
+  put("kMin", K_MIN);
+  put("kPop", K_POP);
+  put("kFeels", K_FEELS);
+  put("kHum", K_HUM);
+  put("airLabel", K_AIR);
+  const q = $("pq");
+  if (q) q.placeholder = t(PH_CITY);
+  const c = $("pclose");
+  if (c) c.setAttribute("aria-label", t(ARIA_CLOSE));
 }
 
 /* ---------------- 数据 ---------------- */
@@ -221,7 +316,15 @@ async function chinaStation(city) {
 }
 
 /* ---------------- 渲染 ---------------- */
-const WEEK_CN = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
+const TODAY = { "zh-TW": "今天", "zh-CN": "今天", en: "Today" };
+const TODAY_S = { "zh-TW": "今", "zh-CN": "今", en: "Today" };
+
+/* 一天的名字：长（周一 / Mon）给正常宽度，短（一 / Mon）给极窄卡片 */
+function dayName(dt, i) {
+  if (i === 0) return { long: t(TODAY), short: t(TODAY_S) };
+  const long = WEEKDAY(dt);
+  return { long, short: IS_CJK.test(long) ? long.slice(-1) : long };
+}
 
 function renderWeek(fc) {
   const wrap = $("week");
@@ -239,9 +342,7 @@ function renderWeek(fc) {
   wrap.innerHTML = "";
   for (let i = 0; i < days.length && i < 7; i++) {
     const dt = new Date(days[i] + "T12:00:00");
-    const w = WEEK_CN[dt.getDay()];
-    const long = i === 0 ? "今天" : w;
-    const short = i === 0 ? "今" : w.slice(1);
+    const nm = dayName(dt, i);
     const ic = desc(codes[i], 1);
     const a = Math.round(((mins[i] - lo) / span) * 100);
     const b = Math.max(a + 14, Math.round(((maxs[i] - lo) / span) * 100));
@@ -249,7 +350,7 @@ function renderWeek(fc) {
     el.className = "day" + (i === 0 ? " is-today" : "");
     el.title = `${ic.text} ${round(mins[i])}° ~ ${round(maxs[i])}°`;
     el.innerHTML =
-      `<span class="dn"><i class="lg">${long}</i><i class="sm">${short}</i></span>` +
+      `<span class="dn"><i class="lg">${nm.long}</i><i class="sm">${nm.short}</i></span>` +
       `<img src="assets/${ic.icon}.svg" alt="${ic.text}">` +
       `<span class="dh">${round(maxs[i])}<i>°</i></span>` +
       `<span class="bar"><i style="--a:${a}%;--b:${b}%"></i></span>` +
@@ -267,8 +368,9 @@ function render(state, settings) {
   const custom = ((settings && settings.place) || "").trim();
   const gname = (geo.name || "").trim();
   const disp = !gname ? "" : /(市|縣|县|区|區|州|盟)$/.test(gname) ? gname : gname + "市";
-  $("place").textContent = custom || disp || "当前位置";
-  $("updated").textContent = hhmm(state.at || Date.now()) + " 更新";
+  $("place").textContent = custom || disp || t(HERE);
+  const tm = hhmm(state.at || Date.now());
+  $("updated").textContent = t({ "zh-TW": tm + " 更新", "zh-CN": tm + " 更新", en: "Updated " + tm });
 
   $("cond").textContent = info.text;
   const icon = $("icon");
@@ -299,13 +401,13 @@ function render(state, settings) {
     popEl.classList.remove("is-off");
     $("popValue").textContent = Math.round(pop) + "%";
   }
-  popEl.title = pop == null ? "" : "今日降水概率";
+  popEl.title = pop == null ? "" : t(POP_TITLE);
 
   $("feels").textContent = round(cur.apparent_temperature) + "°C";
   const hum = sk && sk.sd != null ? sk.sd : round(cur.relative_humidity_2m);
   $("hum").textContent = hum + "%";
-  $("windDir").textContent = (sk && sk.wd) || windFromDeg(cur.wind_direction_10m) || "—";
-  $("windLevel").textContent = (sk && sk.ws) || beaufort(cur.wind_speed_10m) || "—";
+  $("windDir").textContent = windDirText(sk && sk.wd) || windFromDeg(cur.wind_direction_10m) || "—";
+  $("windLevel").textContent = windLevelText(sk && sk.ws, cur.wind_speed_10m) || "—";
 
   /* 空气质量：数值 + 优良中差 */
   const airV = $("airValue");
@@ -359,7 +461,7 @@ function drawPick(rows) {
   if (!rows.length) {
     const d = document.createElement("div");
     d.className = "pempty";
-    d.textContent = "没有匹配的城市，换个写法试试";
+    d.textContent = t(PICK_EMPTY);
     plistEl.appendChild(d);
     return;
   }
@@ -509,13 +611,13 @@ async function refresh() {
     const cached = await widget.storage.get("cache");
     if (cached && cached.fc) { render(cached, settings); return; }
     if (/permission/i.test(String(err))) {
-      showHint("需在控制中心允许联网");
+      showHint(t({ "zh-TW": "需在控制中心允許連網", "zh-CN": "需在控制中心允许联网", en: "Allow network access" }));
       // 允许之后不必等下一次定时刷新
       if (permTries++ < 8) setTimeout(refresh, 30000);
     } else if (/找不到城市/.test(String(err))) {
-      showHint("找不到这个城市");
+      showHint(t({ "zh-TW": "找不到這個城市", "zh-CN": "找不到这个城市", en: "City not found" }));
     } else {
-      showHint("暂时取不到天气数据");
+      showHint(t({ "zh-TW": "暫時取不到天氣資料", "zh-CN": "暂时取不到天气数据", en: "Weather unavailable" }));
     }
   }
 }
@@ -533,6 +635,7 @@ function schedule() {
 }
 
 async function boot() {
+  paintChrome();
   const settings = widget.settings.get();
   const cached = await widget.storage.get("cache");
   if (cached && cached.fc) {
@@ -597,5 +700,6 @@ if (HAS_WIDGET) {
       sk: { wd: "东南风", ws: "2级", sd: 68, aqi: 32 },
     };
   };
+  paintChrome();
   render(window.__CACHE__ || mock(), { place: "" });
 }
