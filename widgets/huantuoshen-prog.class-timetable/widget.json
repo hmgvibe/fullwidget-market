@@ -1,0 +1,22 @@
+{
+  "id": "huantuoshen-prog.class-timetable",
+  "name": { "zh-TW": "我的課表", "zh-CN": "我的课表", "en": "Class Timetable" },
+  "description": {
+    "zh-TW": "離線匯入課表，查看下節課、跨日課程和上課提醒。元件介面為簡體中文。",
+    "zh-CN": "离线导入课表，查看下节课、跨日课程和上课提醒。",
+    "en": "Import class schedules offline and see upcoming lessons and reminders. Widget interface in Simplified Chinese."
+  },
+  "version": "1.4.0",
+  "author": "huantuoshen-prog",
+  "icon": "icon.svg",
+  "preview": "preview.png",
+  "category": "productivity",
+  "size": { "width": 452, "height": 365, "minWidth": 235, "minHeight": 112, "maxWidth": 950, "maxHeight": 700, "grow": 0.35 },
+  "permissions": ["notify"],
+  "settings": [
+    { "key": "use24Hour", "type": "toggle", "label": { "zh-TW": "24 小時制", "zh-CN": "24 小时制", "en": "24-hour clock" }, "default": false },
+    { "key": "notify", "type": "toggle", "label": { "zh-TW": "上課前發送 Windows 通知", "zh-CN": "上课前发送 Windows 通知", "en": "Send Windows notifications before class" }, "default": true },
+    { "key": "lead", "type": "number", "label": { "zh-TW": "提前提醒（分鐘）", "zh-CN": "提前提醒（分钟）", "en": "Reminder lead time (minutes)" }, "min": 0, "max": 120, "step": 1, "default": 10 },
+    { "key": "sound", "type": "toggle", "label": { "zh-TW": "卡片執行時播放鈴聲", "zh-CN": "卡片运行时播放铃声", "en": "Play a bell while the widget is running" }, "default": false }
+  ]
+}
