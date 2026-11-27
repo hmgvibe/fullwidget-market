@@ -289,7 +289,11 @@ body[data-density="micro"] .spark {
   display: none;
 }
 
-/* 窄卡片里放不下两行数字，价格和涨跌改成并排一行 */
+/* 窄卡片里放不下两行数字，价格和涨跌改成并排一行。
+   compact 也要并排：行高 26–35px 时，两行 1.12rem + 0.88rem 需要 33px，
+   而扣掉上下 padding 只剩 20–29px，涨跌那行会压到下一行的分隔线上。
+   数字只有一行时，行高 26px 也放得下（实测 17px）。 */
+body[data-density="compact"] .px,
 body[data-density="tiny"] .px,
 body[data-density="micro"] .px {
   flex: 0 0 auto;
@@ -298,6 +302,10 @@ body[data-density="micro"] .px {
   align-items: baseline;
   gap: 7px;
 }
+/* compact 还留着分时图，横排后右列会变宽，把间距和字号都收紧一点给图让位 */
+body[data-density="compact"] .px { gap: 5px; }
+body[data-density="compact"] .price { font-size: 1rem; }
+body[data-density="compact"] .chg { font-size: 0.82rem; }
 
 body[data-density="tiny"] .name { font-size: 0.9rem; }
 body[data-density="tiny"] .price { font-size: 0.98rem; }
