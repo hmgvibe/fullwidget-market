@@ -9,7 +9,7 @@
     "zh-CN": "自选股实时行情与分时走势，支持 A 股、港股、美股、指数等品种，可用代码、简称或拼音首字母搜索",
     "en": "Live quotes and intraday charts for A-shares, HK/US stocks, indices and more; search by code, name or pinyin initials"
   },
-  "version": "1.13.0",
+  "version": "1.14.0",
   "author": "lizhichao008",
   "entry": "index.html",
   "icon": "icon.svg",
